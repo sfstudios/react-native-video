@@ -1,5 +1,6 @@
 #import <React/RCTConvert.h>
 #import "RCTVideo.h"
+#import "RCTVideoDrmManager.h"
 #import <React/RCTBridgeModule.h>
 #import <React/RCTEventDispatcher.h>
 #import <React/UIView+React.h>
@@ -54,6 +55,10 @@ static int const RCTVideoUnset = -1;
   float _rate;
   float _maxBitRate;
 
+  /* DRM */
+  RCTVideoDrmManager *_drmManager;
+  NSData *_drmFairplayCertificate;
+  
   BOOL _muted;
   BOOL _paused;
   BOOL _repeat;
@@ -367,6 +372,10 @@ static int const RCTVideoUnset = -1;
       _isExternalPlaybackActiveObserverRegistered = YES;
         
       [self addPlayerTimeObserver];
+
+      if (_drmFairplayCertificate) {
+        _drmManager = [[RCTVideoDrmManager alloc] initWithPlayerItem:_playerItem certificate:_drmFairplayCertificate];
+      }
 
       //Perform on next run loop, otherwise onVideoLoadStart is nil
       if (self.onVideoLoadStart) {
@@ -1264,6 +1273,12 @@ static int const RCTVideoUnset = -1;
     [self removePlayerTimeObserver];
     [self addPlayerTimeObserver];
   }
+}
+
+- (void)setDrmFairplayCertificate:(NSString*)base64 {
+  _drmFairplayCertificate = [[NSData alloc] initWithBase64EncodedString:base64 options:0];
+  NSAssert(_drmFairplayCertificate.length == 1244, @"Wrong cert of bytes %ld\n%@\n%@", _drmFairplayCertificate.length, _drmFairplayCertificate, base64);
+  NSLog(@"Loaded cert:\n%@\n\n%@", base64, _drmFairplayCertificate);
 }
 
 - (void)removePlayerLayer

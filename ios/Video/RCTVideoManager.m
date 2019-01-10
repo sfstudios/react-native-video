@@ -42,6 +42,7 @@ RCT_EXPORT_VIEW_PROPERTY(fullscreenOrientation, NSString);
 RCT_EXPORT_VIEW_PROPERTY(filter, NSString);
 RCT_EXPORT_VIEW_PROPERTY(filterEnabled, BOOL);
 RCT_EXPORT_VIEW_PROPERTY(progressUpdateInterval, float);
+RCT_EXPORT_VIEW_PROPERTY(drmFairplayCertificate, NSString);
 /* Should support: onLoadStart, onLoad, and onError to stay consistent with Image */
 RCT_EXPORT_VIEW_PROPERTY(onVideoLoadStart, RCTBubblingEventBlock);
 RCT_EXPORT_VIEW_PROPERTY(onVideoLoad, RCTBubblingEventBlock);

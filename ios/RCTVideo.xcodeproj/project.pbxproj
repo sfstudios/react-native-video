@@ -107,7 +107,9 @@
 				641E28441F0EEC8500443AF6 /* libRCTVideo.a */,
 				49E995712048B4CE00EA7890 /* Frameworks */,
 			);
+			indentWidth = 2;
 			sourceTree = "<group>";
+			tabWidth = 2;
 		};
 /* End PBXGroup section */
 

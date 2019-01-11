@@ -6,15 +6,12 @@
 
 @implementation RCTVideoDrmManager
 {
-  NSData *_fairplayCertificate;
   AVContentKeySession *_contentKeySession;
 }
 
 - (instancetype)initWithPlayerItem:(AVPlayerItem*)playerItem certificate:(NSData*)certificate {
   NSAssert(playerItem != nil && certificate != nil, @"not null");
   self = [super init];
-  _fairplayCertificate = certificate;
-  NSLog(@"Using fairplay cert %@", _fairplayCertificate);
   if (@available(iOS 11.0, *)) {
     _contentKeySession = [AVContentKeySession contentKeySessionWithKeySystem:AVContentKeySystemFairPlayStreaming];
     [_contentKeySession setDelegate:self queue:dispatch_get_main_queue()];
@@ -29,16 +26,24 @@
 - (void)contentKeySession:(AVContentKeySession *)session didProvideContentKeyRequest:(AVContentKeyRequest *)keyRequest {
   NSLog(@"%@", NSStringFromSelector(_cmd));
 
+  NSString *drmUrl = @"https://drm-fairplay-licensing.axprod.net/AcquireLicense";
+  NSDictionary *drmHeader = @{
+    @"X-AxDRM-Message": @"eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ2ZXJzaW9uIjoxLCJjb21fa2V5X2lkIjoiZjcwNmRlMzMtYzUyOS00OTI0LWI5OWUtYTkwZDAwZWI4MjhjIiwibWVzc2FnZSI6eyJ0eXBlIjoiZW50aXRsZW1lbnRfbWVzc2FnZSIsImtleXMiOlt7ImlkIjoiQzczNzYyRkUtM0ZCRi05ODQ5LTk1QjYtQ0U1ODdDOTNBQzY2In1dLCJleHBpcmF0aW9uX2RhdGUiOiIyMDE5LTAxLTExVDE0OjQ1OjIzLjkzNDczNzFaIiwia2V5c19iYXNlZF9vbl9yZXF1ZXN0IjpmYWxzZSwicGVyc2lzdGVudCI6dHJ1ZX0sImJlZ2luX2RhdGUiOiIwMDAxLTAxLTAxVDAwOjAwOjAwIiwiZXhwaXJhdGlvbl9kYXRlIjoiMjAxOS0wMS0xMVQxNDo0NToyMy45MzQ3MzcxWiJ9.i9fKNXci9PWeHFlcGiY2eeYenJA-5eXWVse4HSQfAFY"
+  };
+
+  NSString *certFilePath = [[NSBundle mainBundle] pathForResource:@"fairplay" ofType:@"cer"];
+  NSData *fairplayCertificate = [NSData dataWithContentsOfFile:certFilePath];
+
   NSString *assetIDString = [keyRequest.identifier stringByReplacingOccurrencesOfString:@"skd://" withString:@""];
   NSData *assetIDData = [assetIDString dataUsingEncoding:NSUTF8StringEncoding];
 
-  NSLog(@"Requesting keys for %@ using certificate %ld bytes\n%@", assetIDString, _fairplayCertificate.length, _fairplayCertificate);
-  [keyRequest makeStreamingContentKeyRequestDataForApp:_fairplayCertificate contentIdentifier:assetIDData options:@{AVContentKeyRequestProtocolVersionsKey : @[@1]} completionHandler:^(NSData *contentKeyRequestData, NSError *error) {
-    NSString *jwt = @"eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ2ZXJzaW9uIjoxLCJjb21fa2V5X2lkIjoiZjcwNmRlMzMtYzUyOS00OTI0LWI5OWUtYTkwZDAwZWI4MjhjIiwibWVzc2FnZSI6eyJ0eXBlIjoiZW50aXRsZW1lbnRfbWVzc2FnZSIsImtleXMiOlt7ImlkIjoiQzczNzYyRkUtM0ZCRi05ODQ5LTk1QjYtQ0U1ODdDOTNBQzY2In1dLCJleHBpcmF0aW9uX2RhdGUiOiIyMDE5LTAxLTEwVDE3OjE4OjQ5Ljg1MjY4MjVaIiwia2V5c19iYXNlZF9vbl9yZXF1ZXN0IjpmYWxzZSwicGVyc2lzdGVudCI6dHJ1ZX0sImJlZ2luX2RhdGUiOiIwMDAxLTAxLTAxVDAwOjAwOjAwIiwiZXhwaXJhdGlvbl9kYXRlIjoiMjAxOS0wMS0xMFQxNzoxODo0OS44NTI2ODI1WiJ9.u-mE3riOfTzY9JOJ_FANhLdK_EEo10DWmS6c_mqcsCE";
-    NSString *url = @"https://drm-fairplay-licensing.axprod.net/AcquireLicense";
+  NSLog(@"Requesting keys for %@ using certificate %ld bytes\n%@", assetIDString, fairplayCertificate.length, fairplayCertificate);
+  [keyRequest makeStreamingContentKeyRequestDataForApp:fairplayCertificate contentIdentifier:assetIDData options:@{AVContentKeyRequestProtocolVersionsKey : @[@1]} completionHandler:^(NSData *contentKeyRequestData, NSError *error) {
     
-    NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:[NSURL URLWithString:url]];
-    [request setValue:jwt forHTTPHeaderField:@"X-AxDRM-Message"];
+    NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:[NSURL URLWithString:drmUrl]];
+    for (NSString *key in drmHeader.allKeys) {
+      [request setValue:drmHeader[key] forHTTPHeaderField:key];
+    }
     request.HTTPMethod = @"POST";
     request.HTTPBody = contentKeyRequestData;
     
@@ -58,6 +63,7 @@
 }
 
 - (void)contentKeySession:(AVContentKeySession *)session didProvideRenewingContentKeyRequest:(AVContentKeyRequest *)keyRequest {
+  NSAssert(false, @"Not implemented");
   NSLog(@"%@", NSStringFromSelector(_cmd));
 }
 
@@ -72,6 +78,7 @@
  */
 
 - (void)contentKeySession:(AVContentKeySession *)session didProvidePersistableContentKeyRequest:(AVPersistableContentKeyRequest *)keyRequest {
+  NSAssert(false, @"Not implemented");
   NSLog(@"%@", NSStringFromSelector(_cmd));
 }
 
@@ -87,7 +94,8 @@
  @discussion    If the content key session provides an updated persistable content key data, the previous key data is no longer valid and cannot be used to answer future loading requests.
  */
 
-- (void)contentKeySession:(AVContentKeySession *)session didUpdatePersistableContentKey:(NSData *)persistableContentKey forContentKeyIdentifier:(id)keyIdentifier API_AVAILABLE(ios(11.0)) API_UNAVAILABLE(macos, tvos, watchos) {
+- (void)contentKeySession:(AVContentKeySession *)session didUpdatePersistableContentKey:(NSData *)persistableContentKey forContentKeyIdentifier:(id)keyIdentifier {
+  NSAssert(false, @"Not implemented");
   NSLog(@"%@", NSStringFromSelector(_cmd));
 }
 
@@ -103,6 +111,7 @@
  */
 
 - (void)contentKeySession:(AVContentKeySession *)session contentKeyRequest:(AVContentKeyRequest *)keyRequest didFailWithError:(NSError *)err {
+  NSAssert(false, @"Not implemented");
   NSLog(@"%@", NSStringFromSelector(_cmd));
 }
 
@@ -120,6 +129,7 @@
  */
 
 - (BOOL)contentKeySession:(AVContentKeySession *)session shouldRetryContentKeyRequest:(AVContentKeyRequest *)keyRequest reason:(AVContentKeyRequestRetryReason)retryReason {
+  NSAssert(false, @"Not implemented");
   NSLog(@"%@", NSStringFromSelector(_cmd));
   return NO;
 }
@@ -134,7 +144,7 @@
  @discussion    Will be invoked by an AVContentKeySession when it is certain that the response client provided via -[AVContentKeyRequest processContentKeyResponse:] was successfully processed by the system.
  */
 
-- (void)contentKeySession:(AVContentKeySession *)session contentKeyRequestDidSucceed:(AVContentKeyRequest *)keyRequest API_AVAILABLE(macos(10.14), ios(12.0), tvos(12.0)) {
+- (void)contentKeySession:(AVContentKeySession *)session contentKeyRequestDidSucceed:(AVContentKeyRequest *)keyRequest {
   NSLog(@"%@", NSStringFromSelector(_cmd));
 }
 
@@ -156,7 +166,8 @@
  @discussion    Will be invoked by an AVContentKeySession when an expired session report is added to the storageURL
  */
 
-- (void)contentKeySessionDidGenerateExpiredSessionReport:(AVContentKeySession *)session API_AVAILABLE(macos(10.14), ios(12.0), tvos(12.0)) {
+- (void)contentKeySessionDidGenerateExpiredSessionReport:(AVContentKeySession *)session {
+  NSAssert(false, @"Not implemented");
   NSLog(@"%@", NSStringFromSelector(_cmd));
 }
 

@@ -29,6 +29,8 @@ class ResizeMode {
      */
     static final int RESIZE_MODE_CENTER_CROP = 4;
 
+
+
     @Retention(SOURCE)
     @IntDef({
             RESIZE_MODE_FIT,
@@ -40,7 +42,9 @@ class ResizeMode {
     public @interface Mode {
     }
 
-    @ResizeMode.Mode static int toResizeMode(int ordinal) {
+
+    @ResizeMode.Mode
+    static int toResizeMode(int ordinal) {
         switch (ordinal) {
             case ResizeMode.RESIZE_MODE_FIXED_WIDTH:
                 return ResizeMode.RESIZE_MODE_FIXED_WIDTH;

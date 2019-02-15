@@ -41,28 +41,27 @@ public final class ExoPlayerView extends FrameLayout {
     private boolean useTextureView = true;
     private boolean hideShutterView = false;
 
+
     public ExoPlayerView(Context context) {
         this(context, null);
     }
+
 
     public ExoPlayerView(Context context, AttributeSet attrs) {
         this(context, attrs, 0);
     }
 
+
     public ExoPlayerView(Context context, AttributeSet attrs, int defStyleAttr) {
         super(context, attrs, defStyleAttr);
-
+        Log.d("TAG", "Hello world");
         this.context = context;
 
-        layoutParams = new ViewGroup.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.MATCH_PARENT);
+        layoutParams = new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
 
         componentListener = new ComponentListener();
 
-        FrameLayout.LayoutParams aspectRatioParams = new FrameLayout.LayoutParams(
-                FrameLayout.LayoutParams.MATCH_PARENT,
-                FrameLayout.LayoutParams.MATCH_PARENT);
+        FrameLayout.LayoutParams aspectRatioParams = new FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT);
         aspectRatioParams.gravity = Gravity.CENTER;
         layout = new AspectRatioFrameLayout(context);
         layout.setLayoutParams(aspectRatioParams);
@@ -84,6 +83,7 @@ public final class ExoPlayerView extends FrameLayout {
         addViewInLayout(layout, 0, aspectRatioParams);
     }
 
+
     private void setVideoView() {
         if (surfaceView instanceof TextureView) {
             player.setVideoTextureView((TextureView) surfaceView);
@@ -91,6 +91,7 @@ public final class ExoPlayerView extends FrameLayout {
             player.setVideoSurfaceView((SurfaceView) surfaceView);
         }
     }
+
 
     private void updateSurfaceView() {
         View view = useTextureView ? new TextureView(context) : new SurfaceView(context);
@@ -107,9 +108,11 @@ public final class ExoPlayerView extends FrameLayout {
         }
     }
 
+
     private void updateShutterViewVisibility() {
         shutterView.setVisibility(this.hideShutterView ? View.INVISIBLE : View.VISIBLE);
     }
+
 
     /**
      * Set the {@link SimpleExoPlayer} to use. The {@link SimpleExoPlayer#setTextOutput} and
@@ -138,6 +141,7 @@ public final class ExoPlayerView extends FrameLayout {
         }
     }
 
+
     /**
      * Sets the resize mode which can be of value {@link ResizeMode.Mode}
      *
@@ -151,6 +155,7 @@ public final class ExoPlayerView extends FrameLayout {
 
     }
 
+
     /**
      * Get the view onto which video is rendered. This is either a {@link SurfaceView} (default)
      * or a {@link TextureView} if the {@code use_texture_view} view attribute has been set to true.
@@ -161,6 +166,7 @@ public final class ExoPlayerView extends FrameLayout {
         return surfaceView;
     }
 
+
     public void setUseTextureView(boolean useTextureView) {
         if (useTextureView != this.useTextureView) {
             this.useTextureView = useTextureView;
@@ -168,20 +174,21 @@ public final class ExoPlayerView extends FrameLayout {
         }
     }
 
+
     public void setHideShutterView(boolean hideShutterView) {
         this.hideShutterView = hideShutterView;
         updateShutterViewVisibility();
     }
 
+
     private final Runnable measureAndLayout = new Runnable() {
         @Override
         public void run() {
-            measure(
-                    MeasureSpec.makeMeasureSpec(getWidth(), MeasureSpec.EXACTLY),
-                    MeasureSpec.makeMeasureSpec(getHeight(), MeasureSpec.EXACTLY));
+            measure(MeasureSpec.makeMeasureSpec(getWidth(), MeasureSpec.EXACTLY), MeasureSpec.makeMeasureSpec(getHeight(), MeasureSpec.EXACTLY));
             layout(getLeft(), getTop(), getRight(), getBottom());
         }
     };
+
 
     private void updateForCurrentTrackSelections() {
         if (player == null) {
@@ -199,17 +206,17 @@ public final class ExoPlayerView extends FrameLayout {
         shutterView.setVisibility(VISIBLE);
     }
 
-    private final class ComponentListener implements SimpleExoPlayer.VideoListener,
-            TextRenderer.Output, ExoPlayer.EventListener {
 
+    private final class ComponentListener implements SimpleExoPlayer.VideoListener, TextRenderer.Output, ExoPlayer.EventListener {
         // TextRenderer.Output implementation
+
 
         @Override
         public void onCues(List<Cue> cues) {
             subtitleLayout.onCues(cues);
         }
-
         // SimpleExoPlayer.VideoListener implementation
+
 
         @Override
         public void onVideoSizeChanged(int width, int height, int unappliedRotationDegrees, float pixelWidthHeightRatio) {
@@ -222,62 +229,71 @@ public final class ExoPlayerView extends FrameLayout {
             }
         }
 
+
         @Override
         public void onRenderedFirstFrame() {
             shutterView.setVisibility(INVISIBLE);
         }
-
         // ExoPlayer.EventListener implementation
+
 
         @Override
         public void onLoadingChanged(boolean isLoading) {
             // Do nothing.
         }
 
+
         @Override
         public void onPlayerStateChanged(boolean playWhenReady, int playbackState) {
             // Do nothing.
         }
+
 
         @Override
         public void onPlayerError(ExoPlaybackException e) {
             // Do nothing.
         }
 
+
         @Override
         public void onPositionDiscontinuity(int reason) {
             // Do nothing.
         }
+
 
         @Override
         public void onTimelineChanged(Timeline timeline, Object manifest, int reason) {
             // Do nothing.
         }
 
+
         @Override
         public void onTracksChanged(TrackGroupArray trackGroups, TrackSelectionArray trackSelections) {
             updateForCurrentTrackSelections();
         }
+
 
         @Override
         public void onPlaybackParametersChanged(PlaybackParameters params) {
             // Do nothing
         }
 
+
         @Override
         public void onSeekProcessed() {
             // Do nothing.
         }
+
 
         @Override
         public void onShuffleModeEnabledChanged(boolean shuffleModeEnabled) {
             // Do nothing.
         }
 
+
         @Override
         public void onRepeatModeChanged(int repeatMode) {
             // Do nothing.
         }
     }
-
 }

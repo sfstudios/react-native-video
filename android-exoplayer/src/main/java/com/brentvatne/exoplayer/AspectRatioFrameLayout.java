@@ -38,13 +38,16 @@ public final class AspectRatioFrameLayout extends FrameLayout {
     private float videoAspectRatio;
     private @ResizeMode.Mode int resizeMode = ResizeMode.RESIZE_MODE_FIT;
 
+
     public AspectRatioFrameLayout(Context context) {
         this(context, null);
     }
 
+
     public AspectRatioFrameLayout(Context context, AttributeSet attrs) {
         super(context, attrs);
     }
+
 
     /**
      * Set the aspect ratio that this view should satisfy.
@@ -58,6 +61,7 @@ public final class AspectRatioFrameLayout extends FrameLayout {
         }
     }
 
+
     /**
      * Get the aspect ratio that this view should satisfy.
      *
@@ -66,6 +70,7 @@ public final class AspectRatioFrameLayout extends FrameLayout {
     public float getAspectRatio() {
         return videoAspectRatio;
     }
+
 
     /**
      * Sets the resize mode which can be of value {@link ResizeMode.Mode}
@@ -79,14 +84,17 @@ public final class AspectRatioFrameLayout extends FrameLayout {
         }
     }
 
+
     /**
      * Gets the resize mode which can be of value {@link ResizeMode.Mode}
      *
      * @return resizeMode The resize mode.
      */
-    public @ResizeMode.Mode int getResizeMode() {
+    public @ResizeMode.Mode
+    int getResizeMode() {
         return resizeMode;
     }
+
 
     @Override
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {

@@ -1,13 +1,20 @@
 package com.brentvatne.exoplayer;
 
+import android.net.Uri;
+
 import com.facebook.react.bridge.ReactContext;
 import com.facebook.react.modules.network.CookieJarContainer;
 import com.facebook.react.modules.network.ForwardingCookieHandler;
 import com.facebook.react.modules.network.OkHttpClientProvider;
 import com.google.android.exoplayer2.ext.okhttp.OkHttpDataSourceFactory;
+import com.google.android.exoplayer2.source.MediaSource;
+import com.google.android.exoplayer2.source.dash.DashChunkSource;
+import com.google.android.exoplayer2.source.dash.DashMediaSource;
+import com.google.android.exoplayer2.source.dash.DefaultDashChunkSource;
 import com.google.android.exoplayer2.upstream.DataSource;
 import com.google.android.exoplayer2.upstream.DefaultBandwidthMeter;
 import com.google.android.exoplayer2.upstream.DefaultDataSourceFactory;
+import com.google.android.exoplayer2.upstream.DefaultHttpDataSourceFactory;
 import com.google.android.exoplayer2.upstream.HttpDataSource;
 import com.google.android.exoplayer2.util.Util;
 
@@ -15,6 +22,7 @@ import java.util.Map;
 
 import okhttp3.JavaNetCookieJar;
 import okhttp3.OkHttpClient;
+import timber.log.Timber;
 
 
 public class DataSourceUtil {
@@ -72,8 +80,7 @@ public class DataSourceUtil {
 
 
     private static DataSource.Factory buildDataSourceFactory(ReactContext context, DefaultBandwidthMeter bandwidthMeter, Map<String, String> requestHeaders) {
-        return new DefaultDataSourceFactory(context, bandwidthMeter,
-                buildHttpDataSourceFactory(context, bandwidthMeter, requestHeaders));
+        return new DefaultDataSourceFactory(context, bandwidthMeter, buildHttpDataSourceFactory(context, bandwidthMeter, requestHeaders));
     }
 
 
@@ -88,5 +95,17 @@ public class DataSourceUtil {
             okHttpDataSourceFactory.getDefaultRequestProperties().set(requestHeaders);
 
         return okHttpDataSourceFactory;
+    }
+
+
+
+    public static MediaSource buildMediaSourceForOnline(ReactContext context, Uri mediaUri) {
+        Timber.d("buildMediaSourceForOnline");
+        String userAgent = getUserAgent(context);
+
+        DataSource.Factory mediaDataSourceFactory = new DefaultHttpDataSourceFactory(userAgent);
+        DashChunkSource.Factory dashChunkSourceFactory = new DefaultDashChunkSource.Factory(new DefaultHttpDataSourceFactory(userAgent));
+
+        return new DashMediaSource.Factory(dashChunkSourceFactory, mediaDataSourceFactory).createMediaSource(mediaUri);
     }
 }

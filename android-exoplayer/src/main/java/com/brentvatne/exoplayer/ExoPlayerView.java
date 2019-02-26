@@ -4,7 +4,6 @@ import android.annotation.TargetApi;
 import android.content.Context;
 import android.support.v4.content.ContextCompat;
 import android.util.AttributeSet;
-import android.util.Log;
 import android.view.Gravity;
 import android.view.SurfaceView;
 import android.view.TextureView;
@@ -26,9 +25,10 @@ import com.google.android.exoplayer2.ui.SubtitleView;
 
 import java.util.List;
 
+import timber.log.Timber;
+
 @TargetApi(16)
 public final class ExoPlayerView extends FrameLayout {
-
     private View surfaceView;
     private final View shutterView;
     private final SubtitleView subtitleLayout;
@@ -40,6 +40,15 @@ public final class ExoPlayerView extends FrameLayout {
 
     private boolean useTextureView = true;
     private boolean hideShutterView = false;
+
+
+    private final Runnable measureAndLayout = new Runnable() {
+        @Override
+        public void run() {
+            measure(MeasureSpec.makeMeasureSpec(getWidth(), MeasureSpec.EXACTLY), MeasureSpec.makeMeasureSpec(getHeight(), MeasureSpec.EXACTLY));
+            layout(getLeft(), getTop(), getRight(), getBottom());
+        }
+    };
 
 
     public ExoPlayerView(Context context) {
@@ -54,7 +63,7 @@ public final class ExoPlayerView extends FrameLayout {
 
     public ExoPlayerView(Context context, AttributeSet attrs, int defStyleAttr) {
         super(context, attrs, defStyleAttr);
-        Log.d("TAG", "Hello world");
+        Timber.d("Hello world");
         this.context = context;
 
         layoutParams = new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
@@ -131,8 +140,10 @@ public final class ExoPlayerView extends FrameLayout {
             this.player.removeListener(componentListener);
             this.player.setVideoSurface(null);
         }
+
         this.player = player;
         shutterView.setVisibility(VISIBLE);
+
         if (player != null) {
             setVideoView();
             player.setVideoListener(componentListener);
@@ -179,15 +190,6 @@ public final class ExoPlayerView extends FrameLayout {
         this.hideShutterView = hideShutterView;
         updateShutterViewVisibility();
     }
-
-
-    private final Runnable measureAndLayout = new Runnable() {
-        @Override
-        public void run() {
-            measure(MeasureSpec.makeMeasureSpec(getWidth(), MeasureSpec.EXACTLY), MeasureSpec.makeMeasureSpec(getHeight(), MeasureSpec.EXACTLY));
-            layout(getLeft(), getTop(), getRight(), getBottom());
-        }
-    };
 
 
     private void updateForCurrentTrackSelections() {

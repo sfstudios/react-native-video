@@ -13,15 +13,16 @@ import android.widget.FrameLayout;
 
 import com.google.android.exoplayer2.C;
 import com.google.android.exoplayer2.ExoPlaybackException;
-import com.google.android.exoplayer2.ExoPlayer;
 import com.google.android.exoplayer2.PlaybackParameters;
+import com.google.android.exoplayer2.Player;
 import com.google.android.exoplayer2.SimpleExoPlayer;
 import com.google.android.exoplayer2.Timeline;
 import com.google.android.exoplayer2.source.TrackGroupArray;
 import com.google.android.exoplayer2.text.Cue;
-import com.google.android.exoplayer2.text.TextRenderer;
+import com.google.android.exoplayer2.text.TextOutput;
 import com.google.android.exoplayer2.trackselection.TrackSelectionArray;
 import com.google.android.exoplayer2.ui.SubtitleView;
+import com.google.android.exoplayer2.video.VideoListener;
 
 import java.util.List;
 
@@ -34,6 +35,8 @@ public final class ExoPlayerView extends FrameLayout {
     private final SubtitleView subtitleLayout;
     private final AspectRatioFrameLayout layout;
     private final ComponentListener componentListener;
+    private final ComponentVideoListener componentVideoListener;
+
     private SimpleExoPlayer player;
     private Context context;
     private ViewGroup.LayoutParams layoutParams;
@@ -63,12 +66,13 @@ public final class ExoPlayerView extends FrameLayout {
 
     public ExoPlayerView(Context context, AttributeSet attrs, int defStyleAttr) {
         super(context, attrs, defStyleAttr);
-        Timber.d("Hello world");
+        Timber.d("ExoPlayerView was created");
         this.context = context;
 
         layoutParams = new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
 
         componentListener = new ComponentListener();
+        componentVideoListener = new ComponentVideoListener();
 
         FrameLayout.LayoutParams aspectRatioParams = new FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT);
         aspectRatioParams.gravity = Gravity.CENTER;
@@ -131,12 +135,13 @@ public final class ExoPlayerView extends FrameLayout {
      * @param player The {@link SimpleExoPlayer} to use.
      */
     public void setPlayer(SimpleExoPlayer player) {
+        Timber.d("setPlayer");
         if (this.player == player) {
             return;
         }
         if (this.player != null) {
-            this.player.setTextOutput(null);
-            this.player.setVideoListener(null);
+            this.player.addTextOutput(null);
+            this.player.addVideoListener(null);
             this.player.removeListener(componentListener);
             this.player.setVideoSurface(null);
         }
@@ -146,9 +151,9 @@ public final class ExoPlayerView extends FrameLayout {
 
         if (player != null) {
             setVideoView();
-            player.setVideoListener(componentListener);
+            player.addVideoListener(componentVideoListener);
             player.addListener(componentListener);
-            player.setTextOutput(componentListener);
+            player.addTextOutput(componentListener);
         }
     }
 
@@ -163,7 +168,6 @@ public final class ExoPlayerView extends FrameLayout {
             layout.setResizeMode(resizeMode);
             post(measureAndLayout);
         }
-
     }
 
 
@@ -209,17 +213,7 @@ public final class ExoPlayerView extends FrameLayout {
     }
 
 
-    private final class ComponentListener implements SimpleExoPlayer.VideoListener, TextRenderer.Output, ExoPlayer.EventListener {
-        // TextRenderer.Output implementation
-
-
-        @Override
-        public void onCues(List<Cue> cues) {
-            subtitleLayout.onCues(cues);
-        }
-        // SimpleExoPlayer.VideoListener implementation
-
-
+    private final class ComponentVideoListener implements VideoListener {
         @Override
         public void onVideoSizeChanged(int width, int height, int unappliedRotationDegrees, float pixelWidthHeightRatio) {
             boolean isInitialRatio = layout.getAspectRatio() == 0;
@@ -237,6 +231,21 @@ public final class ExoPlayerView extends FrameLayout {
             shutterView.setVisibility(INVISIBLE);
         }
         // ExoPlayer.EventListener implementation
+
+
+    }
+
+
+
+    private final class ComponentListener implements TextOutput, Player.EventListener {
+        // TextRenderer.Output implementation
+
+
+        @Override
+        public void onCues(List<Cue> cues) {
+            subtitleLayout.onCues(cues);
+        }
+        // SimpleExoPlayer.VideoListener implementation
 
 
         @Override

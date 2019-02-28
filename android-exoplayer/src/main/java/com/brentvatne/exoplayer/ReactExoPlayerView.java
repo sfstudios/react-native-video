@@ -26,6 +26,7 @@ import com.facebook.react.bridge.WritableMap;
 import com.facebook.react.uimanager.ThemedReactContext;
 import com.google.android.exoplayer2.C;
 import com.google.android.exoplayer2.DefaultLoadControl;
+import com.google.android.exoplayer2.DefaultRenderersFactory;
 import com.google.android.exoplayer2.ExoPlaybackException;
 import com.google.android.exoplayer2.ExoPlayer;
 import com.google.android.exoplayer2.ExoPlayerFactory;
@@ -34,11 +35,17 @@ import com.google.android.exoplayer2.PlaybackParameters;
 import com.google.android.exoplayer2.Player;
 import com.google.android.exoplayer2.SimpleExoPlayer;
 import com.google.android.exoplayer2.Timeline;
+import com.google.android.exoplayer2.drm.DefaultDrmSessionManager;
+import com.google.android.exoplayer2.drm.DrmSessionManager;
+import com.google.android.exoplayer2.drm.FrameworkMediaCrypto;
+import com.google.android.exoplayer2.drm.FrameworkMediaDrm;
+import com.google.android.exoplayer2.drm.HttpMediaDrmCallback;
+import com.google.android.exoplayer2.drm.UnsupportedDrmException;
 import com.google.android.exoplayer2.extractor.DefaultExtractorsFactory;
 import com.google.android.exoplayer2.mediacodec.MediaCodecRenderer;
 import com.google.android.exoplayer2.mediacodec.MediaCodecUtil;
 import com.google.android.exoplayer2.metadata.Metadata;
-import com.google.android.exoplayer2.metadata.MetadataRenderer;
+import com.google.android.exoplayer2.metadata.MetadataOutput;
 import com.google.android.exoplayer2.source.BehindLiveWindowException;
 import com.google.android.exoplayer2.source.ExtractorMediaSource;
 import com.google.android.exoplayer2.source.MediaSource;
@@ -51,6 +58,8 @@ import com.google.android.exoplayer2.source.dash.DefaultDashChunkSource;
 import com.google.android.exoplayer2.source.hls.HlsMediaSource;
 import com.google.android.exoplayer2.source.smoothstreaming.DefaultSsChunkSource;
 import com.google.android.exoplayer2.source.smoothstreaming.SsMediaSource;
+import com.google.android.exoplayer2.text.Cue;
+import com.google.android.exoplayer2.text.TextOutput;
 import com.google.android.exoplayer2.trackselection.AdaptiveTrackSelection;
 import com.google.android.exoplayer2.trackselection.DefaultTrackSelector;
 import com.google.android.exoplayer2.trackselection.MappingTrackSelector;
@@ -61,19 +70,25 @@ import com.google.android.exoplayer2.upstream.BandwidthMeter;
 import com.google.android.exoplayer2.upstream.DataSource;
 import com.google.android.exoplayer2.upstream.DefaultAllocator;
 import com.google.android.exoplayer2.upstream.DefaultBandwidthMeter;
+import com.google.android.exoplayer2.upstream.DefaultHttpDataSourceFactory;
+import com.google.android.exoplayer2.upstream.HttpDataSource;
 import com.google.android.exoplayer2.util.Util;
 
 import java.net.CookieHandler;
 import java.net.CookieManager;
 import java.net.CookiePolicy;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.UUID;
 
 import timber.log.Timber;
 
 @SuppressLint("ViewConstructor")
-class ReactExoPlayerView extends FrameLayout implements LifecycleEventListener, ExoPlayer.EventListener, BandwidthMeter.EventListener, BecomingNoisyListener, AudioManager.OnAudioFocusChangeListener, MetadataRenderer.Output {
+class ReactExoPlayerView extends FrameLayout implements LifecycleEventListener, BandwidthMeter.EventListener, BecomingNoisyListener, AudioManager.OnAudioFocusChangeListener,
+        MetadataOutput,
+        Player.EventListener, DefaultDrmSessionManager.EventListener {
     private static final DefaultBandwidthMeter BANDWIDTH_METER = new DefaultBandwidthMeter();
     private static final CookieManager DEFAULT_COOKIE_MANAGER;
     private static final int SHOW_PROGRESS = 1;
@@ -92,6 +107,21 @@ class ReactExoPlayerView extends FrameLayout implements LifecycleEventListener, 
     private DataSource.Factory mediaDataSourceFactory;
     private SimpleExoPlayer player;
     private DefaultTrackSelector trackSelector;
+    private DefaultLoadControl defaultLoadControl;
+    private DefaultRenderersFactory rendererFactory;
+
+    //private PlayerEventListener playerEventListener;
+
+    private PlayerUtils.PlaybackState playbackState;
+    private PlayerUtils.PlaybackLocation playbackLocation;
+    private Long playbackPosition;
+
+    private DrmSessionManager<FrameworkMediaCrypto> drmSessionManager;
+
+    private UUID drmUUID = null;
+    private String drmLicenseUrl = null;
+    private String[] drmLicenseHeader = null;
+
     private boolean playerNeedsSource;
 
     private int resumeWindow;
@@ -114,6 +144,8 @@ class ReactExoPlayerView extends FrameLayout implements LifecycleEventListener, 
     // Props from React
     private Uri srcUri;
     private String extension;
+    private String drmToken;
+
     private boolean repeat;
     private String audioTrackType;
     private Dynamic audioTrackValue;
@@ -158,7 +190,7 @@ class ReactExoPlayerView extends FrameLayout implements LifecycleEventListener, 
 
     public ReactExoPlayerView(ThemedReactContext context) {
         super(context);
-        Timber.d("ReactExoPlayerView");
+        Timber.d("ReactExoPlayerView constructor");
         themedReactContext = context;
 
         eventEmitter = new VideoEventEmitter(context);
@@ -171,7 +203,9 @@ class ReactExoPlayerView extends FrameLayout implements LifecycleEventListener, 
 
         createViews();
 
-        initializePlayer();
+        Timber.d("from the constructor");
+        //initializePlayer();
+        initializePlayerOld();
     }
 
 
@@ -188,8 +222,14 @@ class ReactExoPlayerView extends FrameLayout implements LifecycleEventListener, 
     }
 
 
+    private void createDataSourceFactories() {
+        Timber.d("createDataSourceFactories");
+        mediaDataSourceFactory = buildDataSourceFactory(true);
+    }
+
+
     private void createViews() {
-        Timber.d("-------- createViews");
+        Timber.d("createViews");
 
         LayoutParams layoutParams = new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT);
         exoPlayerView = new ExoPlayerView(getContext());
@@ -202,12 +242,6 @@ class ReactExoPlayerView extends FrameLayout implements LifecycleEventListener, 
     }
 
 
-    private void createDataSourceFactories() {
-        Timber.d("-------- createDataSourceFactories");
-        mediaDataSourceFactory = buildDataSourceFactory(true);
-    }
-
-
     private void configureSubtitleView() {
         Timber.d("-------- configureSubtitleView");
 
@@ -217,33 +251,11 @@ class ReactExoPlayerView extends FrameLayout implements LifecycleEventListener, 
     }
 
 
-    public void setMediaPlayerContentEntry() {
-        Timber.d("-------- setMediaPlayerContentEntry");
-        setupPlaybackLocation();
-        prePlayMechanics();
-    }
+    private void initializePlayerOld() {
+        Long startPosition = 0L;
+        Timber.d("-------- initializePlayerOld and starting position is %d", startPosition);
 
-
-    private void setupPlaybackLocation() {
-        Timber.d("-------- setupPlaybackLocation");
-    }
-
-
-    private void prePlayMechanics() {
-        Timber.d("-------- prePlayMechanics");
-        Timber.d("We should try to register the device and when completed, we continue to start playing the media");
-
-        play(0);
-    }
-
-
-    private void play(long startingPosition) {
-        initializePlayer(startingPosition);
-    }
-
-
-    private void initializePlayer(Long pbPosition) {
-        Timber.d("-------- initializePlayer and starting position is %d", pbPosition);
+        prePlaySetup();
 
         initializeTheBasics();
         setupPlaybackParametersForAudioVideoAndSubtitles();
@@ -253,46 +265,140 @@ class ReactExoPlayerView extends FrameLayout implements LifecycleEventListener, 
     }
 
 
+    private void prePlaySetup() {
+        Timber.d("-------- prePlaySetup, where we register the device and we define the location (local/remote) and position (0/some-other-point-in-time) of the playback of the media");
+        //try to register the device. The old endpoint was:
+        //@GET("/{baseHref}/devices")
+        //Observable<Response> authDevice(@Path(value = "baseHref", encode = false) String baseHref, @Query("apiKey") String apikey, @Query("manufacturer") String manufacturer, @Query("model") String model, @Query("udid") String id);
+
+        //After successfully registering the device, proceed to get the bookmarks for this media, so we know if we should resume from a specific point the playback or not
+        //Note that if we are showing a trailer, always start its playback from the beginning, otherwise fetch the bookmarks for this media and set 'playbackPosition' accordingly
+        playbackPosition = 0L;
+
+        //Finally, check if Cast is connected and set 'playbackLocation' accordingly
+        playbackLocation = PlayerUtils.PlaybackLocation.LOCAL;
+    }
+
+
     private void initializeTheBasics() {
-        Timber.d("initializeTheBasics");
+        Timber.d("-------- initializeTheBasics");
+
+        //Here we initialize some basic objects that we will need for the player such as the track (audio, video, subtitles) selector, the renderer factory and the load control.
+        //Things like a general PlayerEventListener, an analytics manager and other listeners could also be initialized here
+        trackSelector = new DefaultTrackSelector(new AdaptiveTrackSelection.Factory());
+
+        defaultLoadControl = new DefaultLoadControl.Builder()
+                .setAllocator(new DefaultAllocator(true, C.DEFAULT_BUFFER_SEGMENT_SIZE))
+                .setTargetBufferBytes(-1)
+                .setPrioritizeTimeOverSizeThresholds(true)
+                .setBufferDurationsMs(minBufferMs, maxBufferMs, bufferForPlaybackMs, bufferForPlaybackAfterRebufferMs).createDefaultLoadControl();
+
     }
 
 
     private void setupPlaybackParametersForAudioVideoAndSubtitles() {
         Timber.d("-------- setupPlaybackParametersForAudioVideoAndSubtitles");
+
+        //Here we should handle the preferred language of the user for the subtitles and audio tracks of the media and set the trackSelector parameters accordingly
+        trackSelector.setParameters(trackSelector.buildUponParameters().setMaxVideoBitrate(maxBitRate == 0 ? Integer.MAX_VALUE : maxBitRate));
     }
 
 
     private void setupDRM() {
-        Timber.d("-------- setupDRM");
+        Timber.d("-------- setupDRM and drmUUID is %s and drmLicenseUrl is %s", drmUUID, drmLicenseUrl);
+
+        drmSessionManager = null;
+
+        if (drmUUID != null) {
+            try {
+                drmSessionManager = buildDrmSessionManager(drmUUID, drmLicenseUrl, drmLicenseHeader);
+            } catch (UnsupportedDrmException e) {
+                e.printStackTrace();
+                int errorStringId = Util.SDK_INT < 18 ? R.string.error_drm_not_supported : (e.reason == UnsupportedDrmException.REASON_UNSUPPORTED_SCHEME ? R.string.error_drm_unsupported_scheme : R.string.error_drm_unknown);
+                Timber.d("Drm Info: %s", getResources().getString(errorStringId));
+                eventEmitter.error(getResources().getString(errorStringId), e);
+                return;
+            }
+        }
+
+        if (drmSessionManager == null) {
+            Timber.e("An error occurred while setting up the DRM magic");
+        }
+
+        rendererFactory = new DefaultRenderersFactory(getContext(), drmSessionManager, DefaultRenderersFactory.EXTENSION_RENDERER_MODE_OFF);
+        //rendererFactory = new DefaultRenderersFactory(getContext());
     }
 
 
     private void setupThePlayer() {
         Timber.d("-------- setupThePlayer");
+        if (player == null) {
+            Timber.i("The player was null so I created and initialized it");
+
+            //player = ExoPlayerFactory.newSimpleInstance(getContext(), rendererFactory, trackSelector, defaultLoadControl, drmSessionManager);
+            player = ExoPlayerFactory.newSimpleInstance(getContext(), rendererFactory, trackSelector, defaultLoadControl);
+
+            player.seekTo(0);
+            player.addListener(this);
+            player.addTextOutput(new CustomSubtitlesListener());
+            player.setPlaybackParameters(new PlaybackParameters(rate, 1f));
+
+            exoPlayerView.setPlayer(player);
+
+            audioBecomingNoisyReceiver.setListener(this);
+
+            setPlayWhenReady(!isPaused);
+            playerNeedsSource = true;
+        } else {
+            Timber.w("The player existed so I didn't do anything with it");
+        }
     }
 
 
     private void setMediaToPlay() {
         Timber.d("-------- setMediaToPlay");
-    }
+        if (playerNeedsSource && srcUri != null) {
+            Timber.d("playerNeedsSource is true and the srcUri is %s", srcUri.toString());
 
+            boolean haveResumePosition = doWeHaveResumePosition();
+            MediaSource mergedMediaSource = mergeSourcesAndContinue();
 
-    @Override
-    public void setId(int id) {
-        super.setId(id);
-        Timber.d("setId");
-        eventEmitter.setViewId(id);
-    }
+            player.prepare(mergedMediaSource, !haveResumePosition, false);
+            playerNeedsSource = false;
 
-
-    //BandwidthMeter.EventListener implementation
-    @Override
-    public void onBandwidthSample(int elapsedMs, long bytes, long bitrate) {
-        Timber.d("onBandwidthSample");
-        if (mReportBandwidth) {
-            eventEmitter.bandwidthReport(bitrate);
+            eventEmitter.loadStart();
+            loadVideoStarted = true;
+        } else {
+            if (!playerNeedsSource) {
+                Timber.w("playerNeedsSource was false");
+            }
         }
+    }
+
+
+    private boolean doWeHaveResumePosition() {
+        boolean haveResumePosition = resumeWindow != C.INDEX_UNSET;
+        if (haveResumePosition) {
+            player.seekTo(resumeWindow, resumePosition);
+        }
+
+        return haveResumePosition;
+    }
+
+
+    private MediaSource mergeSourcesAndContinue() {
+        ArrayList<MediaSource> mediaSourceList = buildTextSources();
+        MediaSource videoSource = buildMediaSource(srcUri, extension);
+        MediaSource mergedMediaSource;
+        if (mediaSourceList.size() == 0) {
+            mergedMediaSource = videoSource;
+        } else {
+            mediaSourceList.add(0, videoSource);
+            MediaSource[] textSourceArray = mediaSourceList.toArray(new MediaSource[mediaSourceList.size()]);
+            mergedMediaSource = new MergingMediaSource(textSourceArray);
+        }
+
+        return mergedMediaSource;
     }
 
 
@@ -408,6 +514,7 @@ class ReactExoPlayerView extends FrameLayout implements LifecycleEventListener, 
             player = null;
             trackSelector = null;
         }
+
         progressHandler.removeMessages(SHOW_PROGRESS);
         themedReactContext.removeLifecycleEventListener(this);
         audioBecomingNoisyReceiver.removeListener();
@@ -426,8 +533,6 @@ class ReactExoPlayerView extends FrameLayout implements LifecycleEventListener, 
 
 
     private void setPlayWhenReady(boolean playWhenReady) {
-        Timber.d("setPlayWhenReady");
-
         if (player == null) {
             return;
         }
@@ -443,13 +548,73 @@ class ReactExoPlayerView extends FrameLayout implements LifecycleEventListener, 
     }
 
 
+    @Override
+    public void setId(int id) {
+        super.setId(id);
+        Timber.d("setId to be %d", id);
+        eventEmitter.setViewId(id);
+    }
+
+
+    //BandwidthMeter.EventListener implementation
+    @Override
+    public void onBandwidthSample(int elapsedMs, long bytes, long bitrate) {
+        //Timber.d("onBandwidthSample");
+        if (mReportBandwidth) {
+            eventEmitter.bandwidthReport(bitrate);
+        }
+    }
+
+
+    @Override
+    public void onDrmKeysLoaded() {
+        Timber.d("onDrmKeysLoaded");
+    }
+
+
+    @Override
+    public void onDrmSessionManagerError(Exception error) {
+        Timber.d("onDrmSessionManagerError");
+        error.printStackTrace();
+    }
+
+
+    @Override
+    public void onDrmKeysRestored() {
+        Timber.d("onDrmKeysRestored");
+    }
+
+
+    @Override
+    public void onDrmKeysRemoved() {
+        Timber.d("onDrmKeysRemoved");
+    }
+
+
+    public class CustomSubtitlesListener implements TextOutput {
+        @Override
+        public void onCues(List<Cue> cues) {
+            if (cues != null && !cues.isEmpty()) {
+                Timber.d("-------- on cue: %s", cues.get(0).text.toString());
+
+                /*
+                if (subtitleView != null) {
+                    subtitleView.onCues(cues);
+                }
+                */
+            }
+        }
+    }
+
+
     private void startPlayback() {
-        Timber.d("startPlayback");
+        Timber.d("******* startPlayback and playbackState is %d", player.getPlaybackState());
         if (player != null) {
             switch (player.getPlaybackState()) {
                 case ExoPlayer.STATE_IDLE:
                 case ExoPlayer.STATE_ENDED:
-                    initializePlayer();
+                    //initializePlayer();
+                    initializePlayerOld();
                     break;
 
                 case ExoPlayer.STATE_BUFFERING:
@@ -462,7 +627,8 @@ class ReactExoPlayerView extends FrameLayout implements LifecycleEventListener, 
                     break;
             }
         } else {
-            initializePlayer();
+            //initializePlayer();
+            initializePlayerOld();
         }
         if (!disableFocus) {
             setKeepScreenOn(true);
@@ -504,7 +670,7 @@ class ReactExoPlayerView extends FrameLayout implements LifecycleEventListener, 
 
 
     private void clearResumePosition() {
-        Timber.d("clearResumePosition");
+        Timber.d("-------- clearResumePosition");
         resumeWindow = C.INDEX_UNSET;
         resumePosition = C.TIME_UNSET;
     }
@@ -518,7 +684,7 @@ class ReactExoPlayerView extends FrameLayout implements LifecycleEventListener, 
      * @return A new DataSource factory.
      */
     private DataSource.Factory buildDataSourceFactory(boolean useBandwidthMeter) {
-        Timber.d("buildDataSourceFactory");
+        Timber.d("-------- buildDataSourceFactory");
         return DataSourceUtil.getDefaultDataSourceFactory(this.themedReactContext, useBandwidthMeter ? BANDWIDTH_METER : null, requestHeaders);
     }
 
@@ -559,7 +725,7 @@ class ReactExoPlayerView extends FrameLayout implements LifecycleEventListener, 
     // ExoPlayer.EventListener implementation
     @Override
     public void onLoadingChanged(boolean isLoading) {
-        Timber.d("onLoadingChanged");
+        //Timber.d("onLoadingChanged");
         // Do nothing.
     }
 
@@ -731,14 +897,14 @@ class ReactExoPlayerView extends FrameLayout implements LifecycleEventListener, 
 
     @Override
     public void onTimelineChanged(Timeline timeline, Object manifest, int reason) {
-        Timber.d("onTimelineChanged");
+        //Timber.d("onTimelineChanged");
         // Do nothing.
     }
 
 
     @Override
     public void onSeekProcessed() {
-        Timber.d("onSeekProcessed");
+        //Timber.d("onSeekProcessed");
         eventEmitter.seek(player.getCurrentPosition(), seekTime);
         seekTime = C.TIME_UNSET;
     }
@@ -760,7 +926,7 @@ class ReactExoPlayerView extends FrameLayout implements LifecycleEventListener, 
 
     @Override
     public void onTracksChanged(TrackGroupArray trackGroups, TrackSelectionArray trackSelections) {
-        Timber.d("onTracksChanged");
+        //Timber.d("onTracksChanged");
         // Do Nothing.
     }
 
@@ -805,10 +971,12 @@ class ReactExoPlayerView extends FrameLayout implements LifecycleEventListener, 
         if (errorString != null) {
             eventEmitter.error(errorString, ex);
         }
+
         playerNeedsSource = true;
         if (isBehindLiveWindow(e)) {
             clearResumePosition();
-            initializePlayer();
+            //initializePlayer();
+            initializePlayerOld();
         } else {
             updateResumePosition();
         }
@@ -831,10 +999,12 @@ class ReactExoPlayerView extends FrameLayout implements LifecycleEventListener, 
 
 
     public int getTrackRendererIndex(int trackType) {
-        int rendererCount = player.getRendererCount();
-        for (int rendererIndex = 0; rendererIndex < rendererCount; rendererIndex++) {
-            if (player.getRendererType(rendererIndex) == trackType) {
-                return rendererIndex;
+        if (player != null) {
+            int rendererCount = player.getRendererCount();
+            for (int rendererIndex = 0; rendererIndex < rendererCount; rendererIndex++) {
+                if (player.getRendererType(rendererIndex) == trackType) {
+                    return rendererIndex;
+                }
             }
         }
         return C.INDEX_UNSET;
@@ -846,12 +1016,31 @@ class ReactExoPlayerView extends FrameLayout implements LifecycleEventListener, 
         eventEmitter.timedMetadata(metadata);
     }
 
+
     // ReactExoplayerViewManager public api
 
 
+    public void setDrmType(UUID drmType) {
+        this.drmUUID = drmType;
+    }
+
+
+    public void setDrmLicenseUrl(String licenseUrl) {
+        Timber.d("setDrmLicenseUrl: %s", licenseUrl);
+        this.drmLicenseUrl = licenseUrl;
+    }
+
+
+    public void setDrmLicenseHeader(String[] header) {
+        Timber.d("setDrmLicenseHeader: %s", header.toString());
+        this.drmLicenseHeader = header;
+    }
+
+
     public void setSrc(final Uri uri, final String extension, Map<String, String> headers) {
-        Timber.d("setSrc");
         if (uri != null) {
+            Timber.d("setSrc and uri is %s, with extension %s", uri.toString(), extension);
+
             boolean isOriginalSourceNull = srcUri == null;
             boolean isSourceEqual = uri.equals(srcUri);
 
@@ -863,6 +1052,8 @@ class ReactExoPlayerView extends FrameLayout implements LifecycleEventListener, 
             if (!isOriginalSourceNull && !isSourceEqual) {
                 reloadSource();
             }
+        } else {
+            Timber.d("setSrc and uri was null with extension %s", extension);
         }
     }
 
@@ -903,7 +1094,8 @@ class ReactExoPlayerView extends FrameLayout implements LifecycleEventListener, 
     private void reloadSource() {
         Timber.d("reloadSource");
         playerNeedsSource = true;
-        initializePlayer();
+        //initializePlayer();
+        initializePlayerOld();
     }
 
 
@@ -925,7 +1117,7 @@ class ReactExoPlayerView extends FrameLayout implements LifecycleEventListener, 
 
 
     public void setSelectedTrack(int trackType, String type, Dynamic value) {
-        Timber.d("setSelectedTrack");
+        //Timber.d("setSelectedTrack");
         int rendererIndex = getTrackRendererIndex(trackType);
         if (rendererIndex == C.INDEX_UNSET) {
             return;
@@ -1158,7 +1350,9 @@ class ReactExoPlayerView extends FrameLayout implements LifecycleEventListener, 
 
 
     public void setUseTextureView(boolean useTextureView) {
-        exoPlayerView.setUseTextureView(useTextureView);
+        //exoPlayerView.setUseTextureView(useTextureView);
+        boolean finallyUseTextureView = useTextureView && this.drmUUID == null;
+        exoPlayerView.setUseTextureView(finallyUseTextureView);
     }
 
 
@@ -1168,19 +1362,23 @@ class ReactExoPlayerView extends FrameLayout implements LifecycleEventListener, 
 
 
     public void setBufferConfig(int newMinBufferMs, int newMaxBufferMs, int newBufferForPlaybackMs, int newBufferForPlaybackAfterRebufferMs) {
+        Timber.d("setBufferConfig");
         minBufferMs = newMinBufferMs;
         maxBufferMs = newMaxBufferMs;
         bufferForPlaybackMs = newBufferForPlaybackMs;
         bufferForPlaybackAfterRebufferMs = newBufferForPlaybackAfterRebufferMs;
         releasePlayer();
-        initializePlayer();
+        //initializePlayer();
+        initializePlayerOld();
     }
 
 
     @Override
     protected void onAttachedToWindow() {
         super.onAttachedToWindow();
-        initializePlayer();
+        Timber.d("onAttachedWindow");
+        //initializePlayer();
+        initializePlayerOld();
     }
 
 
@@ -1222,5 +1420,38 @@ class ReactExoPlayerView extends FrameLayout implements LifecycleEventListener, 
 
     public void cleanUpResources() {
         stopPlayback();
+    }
+
+
+    //--------------------------------------------
+    //DRM related
+    //--------------------------------------------
+    private DrmSessionManager<FrameworkMediaCrypto> buildDrmSessionManager(UUID uuid, String licenseUrl, String[] keyRequestPropertiesArray) throws UnsupportedDrmException {
+        if (Util.SDK_INT < 18) {
+            Timber.w("The SDK was lower than 18, so we can't play DRM content :(");
+            return null;
+        }
+
+        HttpMediaDrmCallback drmCallback = new HttpMediaDrmCallback(licenseUrl, buildHttpDataSourceFactory(false));
+
+        if (keyRequestPropertiesArray != null) {
+            for (int i = 0; i < keyRequestPropertiesArray.length - 1; i += 2) {
+                drmCallback.setKeyRequestProperty(keyRequestPropertiesArray[i], keyRequestPropertiesArray[i + 1]);
+            }
+        }
+
+        return new DefaultDrmSessionManager<>(uuid, FrameworkMediaDrm.newInstance(uuid), drmCallback, null, mainHandler, this);
+    }
+
+
+    /**
+     * Returns a new HttpDataSource factory.
+     *
+     * @param useBandwidthMeter Whether to set {@link #BANDWIDTH_METER} as a listener to the new
+     *                          DataSource factory.
+     * @return A new HttpDataSource factory.
+     */
+    private HttpDataSource.Factory buildHttpDataSourceFactory(boolean useBandwidthMeter) {
+        return new DefaultHttpDataSourceFactory("sctv", useBandwidthMeter ? BANDWIDTH_METER : null);
     }
 }

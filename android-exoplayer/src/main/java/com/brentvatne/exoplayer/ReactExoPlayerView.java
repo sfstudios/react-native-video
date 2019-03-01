@@ -190,7 +190,7 @@ class ReactExoPlayerView extends FrameLayout implements LifecycleEventListener, 
 
     public ReactExoPlayerView(ThemedReactContext context) {
         super(context);
-        Timber.d("ReactExoPlayerView constructor");
+        Timber.d("ReactExoPlayerView constructor 123123");
         themedReactContext = context;
 
         eventEmitter = new VideoEventEmitter(context);
@@ -205,7 +205,7 @@ class ReactExoPlayerView extends FrameLayout implements LifecycleEventListener, 
 
         Timber.d("from the constructor");
         //initializePlayer();
-        initializePlayerOld();
+        //initializePlayerOld();
     }
 
 

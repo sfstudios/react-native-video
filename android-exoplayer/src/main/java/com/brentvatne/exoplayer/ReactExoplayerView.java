@@ -438,6 +438,7 @@ class ReactExoplayerView extends FrameLayout implements
                 FrameworkMediaDrm.newInstance(uuid), drmCallback, null, mainHandler, this);
     }
 
+
     /**
      * Returns a new HttpDataSource factory.
      *

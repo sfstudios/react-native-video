@@ -21,7 +21,7 @@ export default class Video extends Component {
     super(props);
 
     this.state = {
-      showPoster: true,
+      showPoster: !!props.poster
     };
   }
 
@@ -87,6 +87,12 @@ export default class Video extends Component {
     this._root = component;
   };
 
+  _hidePoster = () => {
+    if (this.state.showPoster) {
+      this.setState({showPoster: false});
+    }
+  }
+
   _onLoadStart = (event) => {
     if (this.props.onLoadStart) {
       this.props.onLoadStart(event.nativeEvent);
@@ -94,6 +100,10 @@ export default class Video extends Component {
   };
 
   _onLoad = (event) => {
+    // Need to hide poster here for windows as onReadyForDisplay is not implemented
+    if (Platform.OS === 'windows') {
+      this._hidePoster();
+    }
     if (this.props.onLoad) {
       this.props.onLoad(event.nativeEvent);
     }
@@ -118,10 +128,6 @@ export default class Video extends Component {
   };  
 
   _onSeek = (event) => {
-    if (this.state.showPoster && !this.props.audioOnly) {
-      this.setState({showPoster: false});
-    }
-
     if (this.props.onSeek) {
       this.props.onSeek(event.nativeEvent);
     }
@@ -164,6 +170,7 @@ export default class Video extends Component {
   };
 
   _onReadyForDisplay = (event) => {
+    this._hidePoster();
     if (this.props.onReadyForDisplay) {
       this.props.onReadyForDisplay(event.nativeEvent);
     }
@@ -182,10 +189,6 @@ export default class Video extends Component {
   };
 
   _onPlaybackRateChange = (event) => {
-    if (this.state.showPoster && event.nativeEvent.playbackRate !== 0 && !this.props.audioOnly) {
-      this.setState({showPoster: false});
-    }
-
     if (this.props.onPlaybackRateChange) {
       this.props.onPlaybackRateChange(event.nativeEvent);
     }
@@ -228,10 +231,10 @@ export default class Video extends Component {
   };
 
   _onGetLicense = (event) => {
-    if (this.props.source && this.props.source.drm && this.props.source.drm.getLicense instanceof Function) {
+    if (this.props.drm && this.props.drm.getLicense instanceof Function) {
       const data = event.nativeEvent;
       if (data && data.spc) {
-        const getLicenseOverride = this.props.source.drm.getLicense(data.spc, this.props);
+        const getLicenseOverride = this.props.drm.getLicense(data.spc, data.contentId, data.spcBase64, this.props);
         const getLicensePromise = Promise.resolve(getLicenseOverride); // Handles both scenarios, getLicenseOverride being a promise and not.
         getLicensePromise.then((result => {
           if (result !== undefined) {
@@ -297,7 +300,6 @@ export default class Video extends Component {
         mainVer: source.mainVer || 0,
         patchVer: source.patchVer || 0,
         requestHeaders: source.headers ? this.stringsOnlyObject(source.headers) : {},
-        drm: source.drm
       },
       onVideoLoadStart: this._onLoadStart,
       onVideoLoad: this._onLoad,
@@ -320,7 +322,7 @@ export default class Video extends Component {
       onPlaybackRateChange: this._onPlaybackRateChange,
       onAudioFocusChanged: this._onAudioFocusChanged,
       onAudioBecomingNoisy: this._onAudioBecomingNoisy,
-      onGetLicense: nativeProps.source && nativeProps.source.drm && nativeProps.source.drm.getLicense && this._onGetLicense,
+      onGetLicense: nativeProps.drm && nativeProps.drm.getLicense && this._onGetLicense,
       onPictureInPictureStatusChanged: this._onPictureInPictureStatusChanged,
       onRestoreUserInterfaceForPictureInPictureStop: this._onRestoreUserInterfaceForPictureInPictureStop,
     });
@@ -331,15 +333,16 @@ export default class Video extends Component {
     };
 
     return (
-      <React.Fragment>
-        <RCTVideo ref={this._assignRoot} {...nativeProps} />
-        {this.props.poster &&
-          this.state.showPoster && (
-            <View style={nativeProps.style}>
-              <Image style={posterStyle} source={{ uri: this.props.poster }} />
-            </View>
-          )}
-      </React.Fragment>
+      <View style={nativeProps.style}>
+        <RCTVideo
+          ref={this._assignRoot}
+          {...nativeProps}
+          style={StyleSheet.absoluteFill}
+        />
+        {this.state.showPoster && (
+          <Image style={posterStyle} source={{ uri: this.props.poster }} />
+        )}
+      </View>
     );
   }
 }
@@ -391,26 +394,27 @@ Video.propTypes = {
   source: PropTypes.oneOfType([
     PropTypes.shape({
       uri: PropTypes.string,
-      drm: PropTypes.shape({
-        type: PropTypes.oneOf([
-          DRMType.CLEARKEY, DRMType.FAIRPLAY, DRMType.WIDEVINE, DRMType.PLAYREADY
-        ]),
-        licenseServer: PropTypes.string,
-        headers: PropTypes.shape({}),
-        base64Certificate: PropTypes.bool,
-        certificateUrl: PropTypes.string,
-        getLicense: PropTypes.func,
-      })
     }),
     // Opaque type returned by require('./video.mp4')
     PropTypes.number
   ]),
+  drm: PropTypes.shape({
+    type: PropTypes.oneOf([
+      DRMType.CLEARKEY, DRMType.FAIRPLAY, DRMType.WIDEVINE, DRMType.PLAYREADY
+    ]),
+    licenseServer: PropTypes.string,
+    headers: PropTypes.shape({}),
+    base64Certificate: PropTypes.bool,
+    certificateUrl: PropTypes.string,
+    getLicense: PropTypes.func,
+  }),
   minLoadRetryCount: PropTypes.number,
   maxBitRate: PropTypes.number,
   resizeMode: PropTypes.string,
   poster: PropTypes.string,
   posterResizeMode: Image.propTypes.resizeMode,
   repeat: PropTypes.bool,
+  automaticallyWaitsToMinimizeStalling: PropTypes.bool,
   allowsExternalPlayback: PropTypes.bool,
   selectedAudioTrack: PropTypes.shape({
     type: PropTypes.string.isRequired,

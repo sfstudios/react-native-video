@@ -3,9 +3,15 @@
 A `<Video>` component for react-native, as seen in
 [react-native-login](https://github.com/brentvatne/react-native-login)!
 
+Version 5.x recommends react-native >= 0.60.0 for Android 64bit builds and Android X support.
+
 Version 4.x requires react-native >= 0.57.0
 
 Version 3.x requires react-native >= 0.40.0
+
+### Version 5.0.0 breaking changes
+
+Version 5 introduces breaking changes on Android, please check carefully the steps described there: [Android Installation](#Android-installation)
 
 ### Version 4.0.0 breaking changes
 
@@ -21,12 +27,17 @@ Version 3.0 features a number of changes to existing behavior. See [Updating](#u
 
 ## Table of Contents
 
-- [Installation](#installation)
-- [Usage](#usage)
-- [iOS App Transport Security](#ios-app-transport-security)
-- [Audio Mixing](#audio-mixing)
-- [Android Expansion File Usage](#android-expansion-file-usage)
-- [Updating](#updating)
+* [Installation](#installation)
+  * [iOS](#ios-installation)
+  * [tvOS](#tvos-installation)
+  * [Android](#android-installation)
+  * [Windows](#windows-installation)
+  * [react-native-dom](#react-native-dom-installation)
+* [Usage](#usage)
+* [iOS App Transport Security](#ios-app-transport-security)
+* [Audio Mixing](#audio-mixing)
+* [Android Expansion File Usage](#android-expansion-file-usage)
+* [Updating](#updating)
 
 ## Installation
 
@@ -44,14 +55,21 @@ yarn add react-native-video
 
 Then follow the instructions for your platform to link react-native-video into your project:
 
+### iOS installation
 <details>
-  <summary>iOS</summary>
+  <summary>iOS details</summary>
 
-### Standard Method
+#### Standard Method
+
+**React Native 0.60 and above**
+
+Run `pod install` in the `ios` directory. Linking is not required in React Native 0.60 and above.
+
+**React Native 0.59 and below**
 
 Run `react-native link react-native-video` to link the react-native-video library.
 
-### Using CocoaPods (required to enable caching)
+#### Using CocoaPods (required to enable caching)
 
 Setup your Podfile like it is described in the [react-native documentation](https://facebook.github.io/react-native/docs/integration-with-existing-apps#configuring-cocoapods-dependencies).
 
@@ -75,8 +93,9 @@ end
 
 </details>
 
-<details>
-  <summary>tvOS</summary>
+### tvOS installation
+  <details>
+  <summary>tvOS details</summary>
   
 `react-native link react-native-video` doesn’t work properly with the tvOS target so we need to add the library manually.
 
@@ -97,14 +116,15 @@ Select RCTVideo-tvOS
 <img src="./docs/tvOS-step-4.jpg" width="40%">
 </details>
 
+### Android installation
 <details>
-  <summary>Android</summary>
+  <summary>Android details</summary>
 
 Run `react-native link react-native-video` to link the react-native-video library.
 
 Or if you have trouble, make the following additions to the given files manually:
 
-**android/settings.gradle**
+#### **android/settings.gradle**
 
 The newer ExoPlayer library will work for most people.
 
@@ -120,16 +140,30 @@ include ':react-native-video'
 project(':react-native-video').projectDir = new File(rootProject.projectDir, '../node_modules/react-native-video/android')
 ```
 
-**android/app/build.gradle**
+#### **android/app/build.gradle**
 
-```gradle
+From version >= 5.0.0, you have to apply this changes:
+
+```diff
 dependencies {
    ...
-   compile project(':react-native-video')
+    compile project(':react-native-video')
++   implementation "androidx.appcompat:appcompat:1.0.0"
+-   implementation "com.android.support:appcompat-v7:${rootProject.ext.supportLibVersion}"
+
 }
 ```
 
-**MainApplication.java**
+#### **android/gradle.properties**
+
+Migrating to AndroidX (needs version >= 5.0.0):
+
+```gradle.properties
+android.useAndroidX=true
+android.enableJetifier=true
+```
+
+#### **MainApplication.java**
 
 On top, where imports are:
 
@@ -151,31 +185,26 @@ protected List<ReactPackage> getPackages() {
 
 </details>
 
+### Windows installation
 <details>
-  <summary>Windows</summary>
+  <summary>Windows details</summary>
 
 Make the following additions to the given files manually:
 
-**windows/myapp.sln**
+#### **windows/myapp.sln**
 
 Add the `ReactNativeVideo` project to your solution.
 
 1. Open the solution in Visual Studio 2015
 2. Right-click Solution icon in Solution Explorer > Add > Existing Project
 
-- UWP: Select `node_modules\react-native-video\windows\ReactNativeVideo\ReactNativeVideo.csproj`
-- WPF: Select `node_modules\react-native-video\windows\ReactNativeVideo.Net46\ReactNativeVideo.Net46.csproj`
-
-**windows/myapp/myapp.csproj**
+#### **windows/myapp/myapp.csproj**
 
 Add a reference to `ReactNativeVideo` to your main application project. From Visual Studio 2015:
 
 1. Right-click main application project > Add > Reference...
 
-- UWP: Check `ReactNativeVideo` from Solution Projects.
-- WPF: Check `ReactNativeVideo.Net46` from Solution Projects.
-
-**MainPage.cs**
+#### **MainPage.cs**
 
 Add the `ReactVideoPackage` class to your list of exported packages.
 
@@ -204,12 +233,13 @@ using System.Collections.Generic;
 
 </details>
 
+### react-native-dom installation
 <details>
-  <summary>react-native-dom</summary>
+  <summary>react-native-dom details</summary>
 
 Make the following additions to the given files manually:
 
-**dom/bootstrap.js**
+#### **dom/bootstrap.js**
 
 Import RCTVideoManager and add it to the list of nativeModules:
 
@@ -264,6 +294,43 @@ var styles = StyleSheet.create({
 ```
 
 ### Configurable props
+* [allowsExternalPlayback](#allowsexternalplayback)
+* [audioOnly](#audioonly)
+* [automaticallyWaitsToMinimizeStalling](#automaticallyWaitsToMinimizeStalling)
+* [bufferConfig](#bufferconfig)
+* [controls](#controls)
+* [disableFocus](#disableFocus)
+* [filter](#filter)
+* [filterEnabled](#filterEnabled)
+* [fullscreen](#fullscreen)
+* [fullscreenAutorotate](#fullscreenautorotate)
+* [fullscreenOrientation](#fullscreenorientation)
+* [headers](#headers)
+* [hideShutterView](#hideshutterview)
+* [id](#id)
+* [ignoreSilentSwitch](#ignoresilentswitch)
+* [maxBitRate](#maxbitrate)
+* [minLoadRetryCount](#minLoadRetryCount)
+* [muted](#muted)
+* [paused](#paused)
+* [pictureInPicture](#pictureinpicture)
+* [playInBackground](#playinbackground)
+* [playWhenInactive](#playwheninactive)
+* [poster](#poster)
+* [posterResizeMode](#posterresizemode)
+* [progressUpdateInterval](#progressupdateinterval)
+* [rate](#rate)
+* [repeat](#repeat)
+* [reportBandwidth](#reportbandwidth)
+* [resizeMode](#resizemode)
+* [selectedAudioTrack](#selectedaudiotrack)
+* [selectedTextTrack](#selectedtexttrack)
+* [selectedVideoTrack](#selectedvideotrack)
+* [source](#source)
+* [stereoPan](#stereopan)
+* [textTracks](#texttracks)
+* [useTextureView](#usetextureview)
+* [volume](#volume)
 
 - [allowsExternalPlayback](#allowsexternalplayback)
 - [audioOnly](#audioonly)
@@ -302,6 +369,23 @@ var styles = StyleSheet.create({
 - [volume](#volume)
 
 ### Event props
+* [onAudioBecomingNoisy](#onaudiobecomingnoisy)
+* [onBandwidthUpdate](#onbandwidthupdate)
+* [onEnd](#onend)
+* [onExternalPlaybackChange](#onexternalplaybackchange)
+* [onFullscreenPlayerWillPresent](#onfullscreenplayerwillpresent)
+* [onFullscreenPlayerDidPresent](#onfullscreenplayerdidpresent)
+* [onFullscreenPlayerWillDismiss](#onfullscreenplayerwilldismiss)
+* [onFullscreenPlayerDidDismiss](#onfullscreenplayerdiddismiss)
+* [onLoad](#onload)
+* [onLoadStart](#onloadstart)
+* [onReadyForDisplay](#onreadyfordisplay)
+* [onPictureInPictureStatusChanged](#onpictureinpicturestatuschanged)
+* [onPlaybackRateChange](#onplaybackratechange)
+* [onProgress](#onprogress)
+* [onSeek](#onseek)
+* [onRestoreUserInterfaceForPictureInPictureStop](#onrestoreuserinterfaceforpictureinpicturestop)
+* [onTimedMetadata](#ontimedmetadata)
 
 - [onAudioBecomingNoisy](#onaudiobecomingnoisy)
 - [onBandwidthUpdate](#onbandwidthupdate)
@@ -349,6 +433,13 @@ For this to work, the poster prop must be set.
 
 Platforms: all
 
+#### automaticallyWaitsToMinimizeStalling
+A Boolean value that indicates whether the player should automatically delay playback in order to minimize stalling. For clients linked against iOS 10.0 and later
+* **false** - Immediately starts playback
+* **true (default)** - Delays playback in order to minimize stalling
+
+Platforms: iOS
+
 #### bufferConfig
 
 Adjust the buffer settings. This prop takes an object with one or more of the properties listed below.
@@ -387,6 +478,18 @@ Note on iOS, controls are always shown when in fullscreen mode.
 For Android MediaPlayer, you will need to build your own controls or use a package like [react-native-video-controls](https://github.com/itsnubix/react-native-video-controls) or [react-native-video-player](https://github.com/cornedor/react-native-video-player).
 
 Platforms: Android ExoPlayer, iOS, react-native-dom
+
+#### disableFocus
+Determines whether video audio should override background music/audio in Android devices.
+* ** false (default)** - Override background audio/music
+* **true** - Let background audio/music from other apps play
+
+Platforms: Android Exoplayer
+
+### DRM
+To setup DRM please follow [this guide](./DRM.md)
+
+Platforms: Android Exoplayer, iOS
 
 #### filter
 
@@ -805,138 +908,13 @@ Platforms: iOS
 ##### Explicit mimetype for the stream
 
 Provide a member `type` with value (`mpd`/`m3u8`/`ism`) inside the source object.
+Sometimes is needed when URL extension does not match with the mimetype that you are expecting, as seen on the next example. (Extension is .ism -smooth streaming- but file served is on format mpd -mpeg dash-)
 
 Example:
-
 ```
-src={{ uri: 'http://host-serving-a-type-different-than-the-extension.ism/manifest(format=mpd-time-csf)',
+source={{ uri: 'http://host-serving-a-type-different-than-the-extension.ism/manifest(format=mpd-time-csf)',
 type: 'mpd' }}
 ```
-
-##### Provide DRM data (only tested with http/https assets)
-
-You can provide some configuration to allow DRM playback.
-This feature will disable the use of `TextureView` on Android.
-DRM options are `type`, `licenseServer`, `headers`, and for iOS there are additional ones: `base64Certificate`, `getLicense`, `certificateUrl`.
-
-###### base64Certificate
-
-Whether or not the certificate url returns it on base64.
-
-Platforms: iOS
-
-###### certificateUrl
-
-URL to fetch a valid certificatefor FairPlay.
-
-Platforms: iOS
-
-###### getLicense
-
-Overridable method to acquire a license manually. It recieves as argument the `spc` string.
-
-Example:
-
-```js
-getLicense: spcString => {
-  const base64spc = Base64.encode(spcString);
-  const formData = new FormData();
-  formData.append("spc", base64spc);
-  return fetch(`https://license.pallycon.com/ri/licenseManager.do`, {
-    method: "POST",
-    headers: {
-      "pallycon-customdata-v2":
-        "eyJkcm1fdHlwZSI6IkZhaXJQbGF5Iiwic2l0ZV9pZCI6IkJMMkciLCJ1c2VyX2lkIjoiMTIxMjc5IiwiY2lkIjoiYXNzZXRfMTQ5OTAiLCJ0b2tlbiI6IjBkQVVLSEQ4bm5pTStJeDJ2Y09HVStzSWRWY2wvSEdxSjdEanNZK1laazZKdlhLczRPM3BVNitVVnV3dkNvLzRyc2lIUi9PSnY4RDJncHBBN0cycnRGdy9pVFMvTWNZaVhML2VLOXdMMXFVM05VbXlFL25RdVV3Tm5mOXI2YlArUjUvRDZxOU5vZmZtTGUybmo4VGphQ3UwUUFQZlVqVzRFREE4eDNUYlI5cXZOa0pKVHdmNTA5NE5UYXY5VzJxbFp0MmczcDNMcUV0RkNMK0N5dFBZSWJEN2ZBUmR1ZzkvVTdiMXB1Y3pndTBqRjg3QnlMU0tac0J3TUpYd2xSZkxTTTZJSzRlWHMvNC9RWU4rVXhnR3ozVTgxODl4aHhWS0RJaDdBcGFkQVllVUZUMWJIVVZBSVVRQms0cjRIQ28yczIydWJvVnVLaVNQazdvYmtJckVNQT09IiwidGltZXN0YW1wIjoiMjAxOS0wMi0xMlQwNjoxODo0MloiLCJoYXNoIjoiMThqcDBDVTdOaUJ3WFdYVC8zR2lFN3R0YXVRWlZ5SjVSMUhSK2J2Um9JWT0ifQ==",
-      "Content-Type": "application/x-www-form-urlencoded"
-    },
-    body: formData
-  })
-    .then(response => response.text())
-    .then(response => {
-      return response;
-    })
-    .catch(error => {
-      console.error("Error", error);
-    });
-};
-```
-
-Platforms: iOS
-
-###### headers
-
-You can customize headers send to the licenseServer.
-
-Example:
-
-```js
-src={{
-    uri: 'https://media.axprod.net/TestVectors/v7-MultiDRM-SingleKey/Manifest_1080p.mpd',
-    drm: {
-        type: 'widevine', //or DRMType.WIDEVINE
-        licenseServer: 'https://drm-widevine-licensing.axtest.net/AcquireLicense',
-        headers: {
-            'X-AxDRM-Message': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ2ZXJzaW9uIjoxLCJjb21fa2V5X2lkIjoiYjMzNjRlYjUtNTFmNi00YWUzLThjOTgtMzNjZWQ1ZTMxYzc4IiwibWVzc2FnZSI6eyJ0eXBlIjoiZW50aXRsZW1lbnRfbWVzc2FnZSIsImZpcnN0X3BsYXlfZXhwaXJhdGlvbiI6NjAsInBsYXlyZWFkeSI6eyJyZWFsX3RpbWVfZXhwaXJhdGlvbiI6dHJ1ZX0sImtleXMiOlt7ImlkIjoiOWViNDA1MGQtZTQ0Yi00ODAyLTkzMmUtMjdkNzUwODNlMjY2IiwiZW5jcnlwdGVkX2tleSI6ImxLM09qSExZVzI0Y3Iya3RSNzRmbnc9PSJ9XX19.FAbIiPxX8BHi9RwfzD7Yn-wugU19ghrkBFKsaCPrZmU'
-        },
-    }
-}}
-```
-
-###### licenseServer
-
-The URL pointing to the licenseServer that will provide the authorization to play the protected stream.
-
-iOS specific fields for `drm`:
-
-- `certificateUrl` - Url to the .cer file.
-- `contentId` (optional) - (overridable, otherwise it will take the value at `loadingRequest.request.URL.host`)
-- `getLicense` - `licenseServer` and `headers` will be ignored. You will obtain as argument the `SPC` (as ASCII string, you will probably need to convert it to base 64) obtained from your `contentId` + the provided certificate via `[loadingRequest streamingContentKeyRequestDataForApp:certificateData contentIdentifier:contentIdData options:nil error:&spcError];`.
-  You should return on this method a `CKC` in Base64, either by just returning it or returning a `Promise` that resolves with the `CKC`.
-  With this prop you can override the license acquisition flow, as an example:
-
-```js
-getLicense: spcString => {
-  const base64spc = btoa(spcString);
-  return fetch(YOUR_LICENSE_SERVER, {
-    method: "POST",
-    // Control the headers
-    headers: {
-      "Content-Type": "application/json",
-      Accept: "application/json"
-    },
-    // Build the data as the server specs it
-    body: JSON.stringify({
-      getFairplayLicense: {
-        releasePid: myPid,
-        spcMessage: base64spc
-      }
-    })
-  })
-    .then(response => response.json())
-    .then(response => {
-      // Handle the response as you desire, f.e. when the server does not respond directly with the CKC
-      if (
-        response &&
-        response.getFairplayLicenseResponse &&
-        response.getFairplayLicenseResponse.ckcResponse
-      ) {
-        return response.getFairplayLicenseResponse.ckcResponse;
-      }
-      throw new Error("No correct response");
-    })
-    .catch(error => {
-      console.error("CKC error", error);
-    });
-};
-```
-
-Platforms: Android, iOS
-
-###### type
-
-You can specify the DRM type, either by string or using the exported DRMType enum.
-Valid values are, for Android: DRMType.WIDEVINE / DRMType.PLAYREADY / DRMType.CLEARKEY.
-for iOS: DRMType.FAIRPLAY
 
 ###### Other protocols
 
@@ -1178,6 +1156,17 @@ Example:
 
 Platforms: all
 
+#### onReadyForDisplay
+Callback function that is called when the first video frame is ready for display. This is when the poster is removed.
+
+Payload: none
+
+* iOS: [readyForDisplay](https://developer.apple.com/documentation/avkit/avplayerviewcontroller/1615830-readyfordisplay?language=objc)
+* Android: [MEDIA_INFO_VIDEO_RENDERING_START](https://developer.android.com/reference/android/media/MediaPlayer#MEDIA_INFO_VIDEO_RENDERING_START)
+* Android ExoPlayer [STATE_READY](https://exoplayer.dev/doc/reference/com/google/android/exoplayer2/Player.html#STATE_READY)
+
+Platforms: Android ExoPlayer, Android MediaPlayer, iOS, Web
+
 #### onPictureInPictureStatusChanged
 
 Callback function that is called when picture in picture becomes active or inactive.
@@ -1195,6 +1184,23 @@ isActive: true
 ```
 
 Platforms: iOS
+
+#### onPlaybackRateChange
+Callback function that is called when the rate of playback changes - either paused or starts/resumes.
+
+Property | Type | Description
+--- | --- | ---
+playbackRate | number | 0 when playback is paused, 1 when playing at normal speed. Other values when playback is slowed down or sped up
+
+Example:
+```
+{
+  playbackRate: 0, // indicates paused
+}
+```
+
+Platforms: all
+
 
 #### onProgress
 
@@ -1479,6 +1485,38 @@ To enable audio to play in background on iOS the audio session needs to be set t
 - [Lumpen Radio](https://github.com/jhabdas/lumpen-radio) contains another example integration using local files and full screen background video.
 
 ## Updating
+
+### Version 5.0.0
+
+Probably you want to update your gradle version:
+#### gradle-wrapper.properties
+```diff
+- distributionUrl=https\://services.gradle.org/distributions/gradle-3.3-all.zip
++ distributionUrl=https\://services.gradle.org/distributions/gradle-5.1.1-all.zip
+```
+
+#### **android/app/build.gradle**
+
+From version >= 5.0.0, you have to apply this changes:
+
+```diff
+dependencies {
+   ...
+    compile project(':react-native-video')
++   implementation "androidx.appcompat:appcompat:1.0.0"
+-   implementation "com.android.support:appcompat-v7:${rootProject.ext.supportLibVersion}"
+
+}
+```
+
+#### **android/gradle.properties**
+
+Migrating to AndroidX (needs version >= 5.0.0):
+
+```gradle.properties
+android.useAndroidX=true
+android.enableJetifier=true
+```
 
 ### Version 4.0.0
 

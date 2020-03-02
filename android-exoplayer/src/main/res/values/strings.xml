@@ -16,4 +16,5 @@
   <string name="error_drm_unsupported_scheme">This device does not support the required DRM scheme</string>
 
   <string name="error_drm_unknown">An unknown DRM error occurred</string>
+  <string name="track_selection_title">Placeholder for titleselection</string>
 </resources>

@@ -1,3 +1,32 @@
+
+buildscript {
+    repositories {
+        mavenCentral()
+        jcenter()
+        google()
+    }
+    dependencies {
+        classpath 'com.android.tools.build:gradle:3.5.3'
+    }
+}
+
+allprojects {
+    repositories {
+        google()
+        mavenLocal()
+        mavenCentral()
+        jcenter()
+        maven {
+            // All of React Native (JS, Obj-C sources, Android binaries) is installed from npm
+            url "$rootDir/../node_modules/react-native/android"
+        }
+        maven {
+            // Android JSC is installed from npm
+            url("$rootDir/../node_modules/jsc-android/dist")
+        }
+        maven { url 'https://jitpack.io' }
+    }
+}
 apply plugin: 'com.android.library'
 
 def safeExtGet(prop, fallback) {
@@ -27,7 +56,8 @@ android {
 }
 
 dependencies {
-    implementation "com.facebook.react:react-native:${safeExtGet('reactNativeVersion', '+')}"
+    //implementation "com.facebook.react:react-native:${safeExtGet('reactNativeVersion', '+')}"
+    implementation "com.facebook.react:react-native:+"
     implementation('com.google.android.exoplayer:exoplayer:2.10.4') {
         exclude group: 'com.android.support'
     }
@@ -41,5 +71,8 @@ dependencies {
         exclude group: 'com.squareup.okhttp3', module: 'okhttp'
     }
     implementation 'com.squareup.okhttp3:okhttp:3.14.3'
+    implementation 'androidx.fragment:fragment:1.0.0'
+    implementation 'androidx.appcompat:appcompat:1.0.0'
+    implementation "com.google.android.material:material:1.0.0"
 
 }

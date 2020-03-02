@@ -137,12 +137,10 @@ public class ReactExoplayerViewManager extends ViewGroupManager<ReactExoplayerVi
 
     @ReactProp(name = PROP_SRC)
     public void setSrc(final ReactExoplayerView videoView, @Nullable ReadableMap src) {
-        Log.d("SetSrc", "Set Source");
         Context context = videoView.getContext().getApplicationContext();
         String uriString = src.hasKey(PROP_SRC_URI) ? src.getString(PROP_SRC_URI) : null;
         String extension = src.hasKey(PROP_SRC_TYPE) ? src.getString(PROP_SRC_TYPE) : null;
         Map<String, String> headers = src.hasKey(PROP_SRC_HEADERS) ? toStringMap(src.getMap(PROP_SRC_HEADERS)) : null;
-        ReadableMap drm = src.hasKey(PROP_SRC_DRM) ? src.getMap(PROP_SRC_DRM) : null;
 
         if (TextUtils.isEmpty(uriString)) {
             return;
@@ -153,41 +151,18 @@ public class ReactExoplayerViewManager extends ViewGroupManager<ReactExoplayerVi
 
             if (srcUri != null) {
                 videoView.setSrc(srcUri, extension, headers);
-                if (drm != null && drm.hasKey(PROP_SRC_DRM_TYPE)) {
-                    String drmType = drm.hasKey(PROP_SRC_DRM_TYPE) ? drm.getString(PROP_SRC_DRM_TYPE) : null;
-                    String drmLicenseServer = drm.hasKey(PROP_SRC_DRM_LICENSESERVER) ? drm.getString(PROP_SRC_DRM_LICENSESERVER) : null;
-                    ReadableMap drmHeaders = drm.hasKey(PROP_SRC_DRM_HEADERS) ? drm.getMap(PROP_SRC_DRM_HEADERS) : null;
-                    if (drmType != null && drmLicenseServer != null && Util.getDrmUuid(drmType) != null) {
-                        Log.d("setDrmType", drmType);
-                        UUID drmUUID = Util.getDrmUuid(drmType);
-                        videoView.setDrmType(drmUUID);
-                        videoView.setDrmLicenseUrl(drmLicenseServer);
-                        if (drmHeaders != null) {
-                            ArrayList<String> drmKeyRequestPropertiesList = new ArrayList<>();
-                            ReadableMapKeySetIterator itr = drmHeaders.keySetIterator();
-                            while (itr.hasNextKey()) {
-                                String key = itr.nextKey();
-                                drmKeyRequestPropertiesList.add(key);
-                                drmKeyRequestPropertiesList.add(drmHeaders.getString(key));
-                            }
-                            videoView.setDrmLicenseHeader(drmKeyRequestPropertiesList.toArray(new String[0]));
-                        }
-                        Log.d("setDrm", "Disabling TextureView (needed for DRM)");
-                        videoView.setUseTextureView(false);
-                    }
-                }
             }
         } else {
             int identifier = context.getResources().getIdentifier(
-                uriString,
-                "drawable",
-                context.getPackageName()
+                    uriString,
+                    "drawable",
+                    context.getPackageName()
             );
             if (identifier == 0) {
                 identifier = context.getResources().getIdentifier(
-                    uriString,
-                    "raw",
-                    context.getPackageName()
+                        uriString,
+                        "raw",
+                        context.getPackageName()
                 );
             }
             if (identifier > 0) {
@@ -198,7 +173,6 @@ public class ReactExoplayerViewManager extends ViewGroupManager<ReactExoplayerVi
             }
         }
     }
-
     @ReactProp(name = PROP_RESIZE_MODE)
     public void setResizeMode(final ReactExoplayerView videoView, final String resizeModeOrdinalString) {
         videoView.setResizeModeModifier(convertToIntDef(resizeModeOrdinalString));

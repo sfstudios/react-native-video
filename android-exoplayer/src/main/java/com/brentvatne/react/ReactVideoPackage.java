@@ -3,12 +3,16 @@ package com.brentvatne.react;
 import com.brentvatne.exoplayer.DefaultReactExoplayerConfig;
 import com.brentvatne.exoplayer.ReactExoplayerConfig;
 import com.brentvatne.exoplayer.ReactExoplayerViewManager;
+import com.brentvatne.exoplayer.ReactDownloadService;
+import com.brentvatne.exoplayer.ReactDownloadTracker;
 import com.facebook.react.ReactPackage;
 import com.facebook.react.bridge.JavaScriptModule;
 import com.facebook.react.bridge.NativeModule;
 import com.facebook.react.bridge.ReactApplicationContext;
+import com.facebook.react.bridge.ReactMethod;
 import com.facebook.react.uimanager.ViewManager;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
@@ -23,9 +27,20 @@ public class ReactVideoPackage implements ReactPackage {
         this.config = config;
     }
 
+
     @Override
     public List<NativeModule> createNativeModules(ReactApplicationContext reactContext) {
-        return Collections.emptyList();
+
+
+        List<NativeModule> modules = new ArrayList<>();
+        ReactDownloadService myService = new ReactDownloadService();
+
+        ReactDownloadTracker tracker = new ReactDownloadTracker(reactContext, myService.getDownloadManager());
+
+
+        modules.add(tracker);
+
+        return  modules;
     }
 
     // Deprecated RN 0.47

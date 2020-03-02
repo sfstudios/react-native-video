@@ -455,22 +455,6 @@ class ReactExoplayerView extends FrameLayout implements
     }
 
 
-    private DrmSessionManager<FrameworkMediaCrypto> buildDrmSessionManager(UUID uuid,
-                                                                           String licenseUrl, String[] keyRequestPropertiesArray) throws UnsupportedDrmException {
-        if (Util.SDK_INT < 18) {
-            return null;
-        }
-        HttpMediaDrmCallback drmCallback = new HttpMediaDrmCallback(licenseUrl,
-                buildHttpDataSourceFactory(false));
-        if (keyRequestPropertiesArray != null) {
-            for (int i = 0; i < keyRequestPropertiesArray.length - 1; i += 2) {
-                drmCallback.setKeyRequestProperty(keyRequestPropertiesArray[i],
-                        keyRequestPropertiesArray[i + 1]);
-            }
-        }
-        return new DefaultDrmSessionManager<>(uuid,
-                FrameworkMediaDrm.newInstance(uuid), drmCallback, null, mainHandler, this);
-    }
 
     /**
      * Returns a new HttpDataSource factory.
@@ -479,9 +463,10 @@ class ReactExoplayerView extends FrameLayout implements
      *     DataSource factory.
      * @return A new HttpDataSource factory.
      */
+    /*
     private HttpDataSource.Factory buildHttpDataSourceFactory(boolean useBandwidthMeter) {
         return new DefaultHttpDataSourceFactory("sctv", useBandwidthMeter ? BANDWIDTH_METER : null);
-    }
+    }*/
 
     private MediaSource buildMediaSource(Uri uri, String overrideExtension) {
         int type = Util.inferContentType(!TextUtils.isEmpty(overrideExtension) ? "." + overrideExtension
@@ -1185,6 +1170,7 @@ class ReactExoplayerView extends FrameLayout implements
             }
         }
     }
+
 
     public void setMutedModifier(boolean muted) {
         this.muted = muted;

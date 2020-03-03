@@ -203,10 +203,13 @@ public final class ReactTrackSelectionDialog extends DialogFragment {
         // We need to own the view to let tab layout work correctly on all API levels. We can't use
         // AlertDialog because it owns the view itself, so we use AppCompatDialog instead, themed using
         // the AlertDialog theme overlay with force-enabled title.
+        /*
         AppCompatDialog dialog =
                 new AppCompatDialog(getActivity(), R.style.TrackSelectionDialogThemeOverlay);
         dialog.setTitle(titleId);
-        return dialog;
+
+         */
+        return null;
     }
 
     @Override

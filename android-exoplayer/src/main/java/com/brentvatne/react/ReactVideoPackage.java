@@ -30,17 +30,7 @@ public class ReactVideoPackage implements ReactPackage {
 
     @Override
     public List<NativeModule> createNativeModules(ReactApplicationContext reactContext) {
-
-
-        List<NativeModule> modules = new ArrayList<>();
-        ReactDownloadService myService = new ReactDownloadService();
-
-        ReactDownloadTracker tracker = new ReactDownloadTracker(reactContext, myService.getDownloadManager());
-
-
-        modules.add(tracker);
-
-        return  modules;
+        return Collections.emptyList();
     }
 
     // Deprecated RN 0.47

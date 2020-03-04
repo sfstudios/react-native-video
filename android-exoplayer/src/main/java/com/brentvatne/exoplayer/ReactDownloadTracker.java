@@ -8,11 +8,21 @@ import android.widget.Toast;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.FragmentManager;
 
+import com.brentvatne.react.R;
+import com.facebook.react.ReactApplication;
 import com.facebook.react.bridge.ReactApplicationContext;
 import com.facebook.react.bridge.ReactContextBaseJavaModule;
 import com.facebook.react.bridge.ReactMethod;
+import com.facebook.react.bridge.ReadableMap;
 import com.google.android.exoplayer2.C;
+import com.google.android.exoplayer2.DefaultRenderersFactory;
 import com.google.android.exoplayer2.RenderersFactory;
+import com.google.android.exoplayer2.drm.DefaultDrmSessionManager;
+import com.google.android.exoplayer2.drm.FrameworkMediaCrypto;
+import com.google.android.exoplayer2.drm.FrameworkMediaDrm;
+import com.google.android.exoplayer2.drm.HttpMediaDrmCallback;
+import com.google.android.exoplayer2.drm.UnsupportedDrmException;
+import com.google.android.exoplayer2.ext.okhttp.OkHttpDataSourceFactory;
 import com.google.android.exoplayer2.offline.Download;
 import com.google.android.exoplayer2.offline.DownloadCursor;
 import com.google.android.exoplayer2.offline.DownloadHelper;
@@ -21,6 +31,7 @@ import com.google.android.exoplayer2.offline.DownloadManager;
 import com.google.android.exoplayer2.offline.DownloadRequest;
 import com.google.android.exoplayer2.offline.DownloadService;
 import com.google.android.exoplayer2.offline.StreamKey;
+import com.google.android.exoplayer2.drm.DrmSessionManager;
 import com.google.android.exoplayer2.trackselection.DefaultTrackSelector;
 import com.google.android.exoplayer2.trackselection.MappingTrackSelector.MappedTrackInfo;
 import com.google.android.exoplayer2.ui.TrackSelectionDialogBuilder;
@@ -33,7 +44,11 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.CopyOnWriteArraySet;
+
+import okhttp3.OkHttpClient;
 
 
 /**
@@ -41,10 +56,7 @@ import java.util.concurrent.CopyOnWriteArraySet;
  **/
 public class ReactDownloadTracker extends ReactContextBaseJavaModule {
 
-    @Override
-    public String getName() {
-        return null;
-    }
+
 
     // Listener for tracked downloads.
     public interface Listener {
@@ -62,11 +74,12 @@ public class ReactDownloadTracker extends ReactContextBaseJavaModule {
     private final DownloadIndex downloadIndex;
     private final DefaultTrackSelector.Parameters trackSelectorParams;
 
+
     public ReactDownloadTracker(
             Context context,/* DataSource.Factory dataSourceFactory,*/ DownloadManager downloadManager
     ) {
-        super((ReactApplicationContext)context);
-        this.context = context;
+        super((ReactApplicationContext)context.getApplicationContext());
+        this.context = context.getApplicationContext();
         //this.dataSourceFactory = dataSourceFactory;
         listeners = new CopyOnWriteArraySet<>();
         downloadHashMap = new HashMap<>();
@@ -92,6 +105,10 @@ public class ReactDownloadTracker extends ReactContextBaseJavaModule {
         loadDownloads();
     }
 
+     @Override
+    public String getName() {
+        return TAG;
+    }
     public void addListener(Listener listener) {
         listeners.add(listener);
     }
@@ -106,12 +123,53 @@ public class ReactDownloadTracker extends ReactContextBaseJavaModule {
     }
 
     @ReactMethod
-    public void deleteDownload(FragmentManager fragmentManager, String name, Uri uri, String extension, RenderersFactory renderersFactory) {
+    public void toggleDownload(Uri uri, @Nullable ReadableMap src) {
+        Log.d("ReactDownloadTracker", "This is my uri: " + uri.toString());
+
+        Log.d("ReactDownloadTracker", "This is my src Object? that is passed to toggleDL: " + src.toString());
+
+        /*
         Download download = downloadHashMap.get(uri);
 
         if (download != null) {
             DownloadService.sendRemoveDownload(context, ReactDownloadService.class, download.request.uri.toString(), false);
         }
+
+        RenderersFactory renderersFactory = new DefaultRenderersFactory(getReactApplicationContext());
+
+        // Pass headers to datasourceFactory.
+        OkHttpDataSourceFactory myDatasourceFactory = new OkHttpDataSourceFactory(new OkHttpClient(), Util.getUserAgent(getReactApplicationContext().getApplicationContext(), "ReactDownloader"));
+        Map<String, String> requestHeaders = src.hasKey("headers") ? toStringMap(src.getMap("headers")) : null;
+        myDatasourceFactory.getDefaultRequestProperties().set(requestHeaders);
+
+        // DRM Variables
+        // Below values are placeholders.
+        UUID drmUUID = src.hasKey("drm") ? new UUID( 1, 2 ) : null;
+        String drmLicenseUrl = src.hasKey("drm") ? getCorrectKey() : null;
+        String[] drmLicenseHeader = src.hasKey("drm") ? getCorrectKey() : null;
+
+        //DRMSession
+        DrmSessionManager<FrameworkMediaCrypto> drmSessionManager = null;
+                    if (drmUUID != null) {
+                        try {
+                            drmSessionManager = buildDrmSessionManager(drmUUID, drmLicenseUrl,
+                                    drmLicenseHeader);
+                        } catch (UnsupportedDrmException e) {
+                            int errorStringId = Util.SDK_INT < 18 ? R.string.error_drm_not_supported
+                                    : (e.reason == UnsupportedDrmException.REASON_UNSUPPORTED_SCHEME
+                                    ? R.string.error_drm_unsupported_scheme : R.string.error_drm_unknown);
+                            //eventEmitter.error(getResources().getString(errorStringId), e);
+                            System.out.println(e);
+                            return;
+                        }
+                    }
+
+        DefaultTrackSelector.Parameters trackSelectorParameter = DefaultTrackSelector.Parameters.DEFAULT;
+
+        // pass drmsessionmanager into DownloadHelper
+        DownloadHelper.forDash(uri, myDatasourceFactory, renderersFactory, drmSessionManager, trackSelectorParameter);
+
+         */
     }
 
     private void loadDownloads() {
@@ -125,8 +183,27 @@ public class ReactDownloadTracker extends ReactContextBaseJavaModule {
         }
     }
 
-    @ReactMethod
+     private DrmSessionManager<FrameworkMediaCrypto> buildDrmSessionManager(UUID uuid,
+                                                                            String licenseUrl, String[] keyRequestPropertiesArray) throws UnsupportedDrmException {
+        /*
+        if (Util.SDK_INT < 18) {
+            return null;
+        }
+        HttpMediaDrmCallback drmCallback = new HttpMediaDrmCallback(licenseUrl,
+                buildHttpDataSourceFactory(false));
+        if (keyRequestPropertiesArray != null) {
+            for (int i = 0; i < keyRequestPropertiesArray.length - 1; i += 2) {
+                drmCallback.setKeyRequestProperty(keyRequestPropertiesArray[i],
+                        keyRequestPropertiesArray[i + 1]);
+            }
+        }
+        return new DefaultDrmSessionManager<>(uuid,
+                FrameworkMediaDrm.newInstance(uuid), drmCallback, null, false, 3);*/
+        return null;
+    }
+
     private void startDownload(Uri resourceLocation, String contentId, String name) {
+
         startDownload(buildDownloadRequest(resourceLocation, contentId, name));
     }
 
@@ -144,69 +221,28 @@ public class ReactDownloadTracker extends ReactContextBaseJavaModule {
         return myDownloadRequest;
     }
 
-    /*
-    private final class StartDownloadDialogHelper implements DownloadHelper.Callback, DialogInterface.OnClickListener, DialogInterface.OnDismissListener {
-        private final FragmentManager fragmentManager;
-        private final DownloadHelper downloadHelper;
-        private final String name;
+    /**
+     * toStringMap converts a {@link ReadableMap} into a HashMap.
+     *
+     * @param readableMap The ReadableMap to be conveted.
+     * @return A HashMap containing the data that was in the ReadableMap.
+     * @see 'Adapted from https://github.com/artemyarulin/react-native-eval/blob/master/android/src/main/java/com/evaluator/react/ConversionUtil.java'
+     */
+    public static Map<String, String> toStringMap(@Nullable ReadableMap readableMap) {
+        if (readableMap == null)
+            return null;
 
-      //  private ReactTrackSelectionDialog trackSelectionDialog = new ReactTrackSelectionDialog();
-        private MappedTrackInfo mappedTrackInfo;
+        com.facebook.react.bridge.ReadableMapKeySetIterator iterator = readableMap.keySetIterator();
+        if (!iterator.hasNextKey())
+            return null;
 
-        public StartDownloadDialogHelper(FragmentManager fragmentManager, DownloadHelper downloadHelper, String name){
-            this.name = name;
-            this.downloadHelper = downloadHelper;
-            this.fragmentManager = fragmentManager;
-            downloadHelper.prepare(this);
-
+        Map<String, String> result = new HashMap<>();
+        while (iterator.hasNextKey()) {
+            String key = iterator.nextKey();
+            result.put(key, readableMap.getString(key));
         }
 
-        public void release(){
-            downloadHelper.release();
-        }
-
-        @Override
-        public void onPrepared( DownloadHelper helper){
-            if(helper.getPeriodCount() == 0){
-                Log.d(TAG, "No periods found donwloading entire stream.");
-                startDownload();
-                downloadHelper.release();
-            }
-        }
-
-        @Override
-        public void onClick(DialogInterface dialogInterface, int which){
-            return;
-        }
-
-        @Override
-        public void onPrepareError(DownloadHelper helper, IOException e){
-            Toast.makeText(context, "Something went wrong when starting the download", Toast.LENGTH_LONG).show();
-            Log.e(TAG,  e.toString());
-        }
-
-        @Override
-        public void onDismiss(DialogInterface dialogInterface){
-            downloadHelper.release();
-        }
-
-        public void startSelectedDownload(){
-            DownloadRequest downloadRequest = buildDownloadRequest();
-            startDownload(downloadRequest);
-        }
-
-        private void startDownload() {
-            startDownload(buildDownloadRequest());
-        }
-
-        private void startDownload(DownloadRequest downloadRequest){
-            DownloadService.sendAddDownload(context, ReactDownloadService.class, downloadRequest, false);
-        }
-
-        private DownloadRequest buildDownloadRequest() {
-            return downloadHelper.getDownloadRequest(Util.getUtf8Bytes(name));
-        }
+        return result;
     }
-    */
 
 }
